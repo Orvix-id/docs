@@ -6,9 +6,5 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: appName,
     },
-    i18n: {
-      defaultLanguage: 'en',
-      languages: ['en', 'id'],
-    },
   };
 }
