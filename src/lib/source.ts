@@ -22,23 +22,29 @@ export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
   plugins: [lucideIconsPlugin()],
+  i18n: {
+    defaultLanguage: 'en',
+    languages: ['en', 'id'],
+  },
 });
 
 export function getPageImageUrl(page: (typeof source)['$inferPage']) {
   const segments = [...page.slugs, 'image.png'];
+  const locale = page.locale && page.locale !== 'en' ? page.locale : undefined;
 
   return {
     segments,
-    url: '/' + [page.locale, ...docsImageRoute.split('/'), ...segments].filter(Boolean).join('/'),
+    url: '/' + [locale, ...docsImageRoute.split('/'), ...segments].filter(Boolean).join('/'),
   };
 }
 
 export function getPageMarkdownUrl(page: (typeof source)['$inferPage']) {
   const segments = [...page.slugs, 'content.md'];
+  const locale = page.locale && page.locale !== 'en' ? page.locale : undefined;
 
   return {
     segments,
-    url: '/' + [page.locale, ...docsContentRoute.split('/'), ...segments].filter(Boolean).join('/'),
+    url: '/' + [locale, ...docsContentRoute.split('/'), ...segments].filter(Boolean).join('/'),
   };
 }
 
