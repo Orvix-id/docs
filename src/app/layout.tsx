@@ -2,10 +2,15 @@ import { RootProvider } from 'fumadocs-ui/provider/next';
 import { I18nProvider } from 'fumadocs-ui/contexts/i18n';
 import './global.css';
 import { Inter } from 'next/font/google';
+import type { Metadata } from 'next';
 
 const inter = Inter({
   subsets: ['latin'],
 });
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://docs.orvix.id'),
+};
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
