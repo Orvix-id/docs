@@ -8,10 +8,7 @@ export function baseOptions(): BaseLayoutProps {
     },
     i18n: {
       defaultLanguage: 'en',
-      languages: [
-        { locale: 'en', text: 'English' },
-        { locale: 'id', text: 'Bahasa Indonesia' },
-      ],
+      languages: ['en', 'id'],
     },
   };
 }
