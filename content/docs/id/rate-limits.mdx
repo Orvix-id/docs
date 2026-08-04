@@ -1,0 +1,101 @@
+---
+title: Rate Limit
+description: Rate limiting per-key dan limit belanja bulanan yang diterapkan oleh Orvix AI router.
+---
+
+# Rate Limit
+
+Setiap API key memiliki dua limit yang dapat dikonfigurasikan:
+
+| Limit | Satuan | Perilaku |
+|---|---|---|
+| **Rate limit** | Request per menit | Sliding window 60 detik per proses |
+| **Limit belanja bulanan** | USD | Akumulasi belanja untuk bulan kalender berjalan |
+
+Kedua limit diatur per-key dari [Orvix Platform](https://platform.orvix.id/api-keys).
+
+## Saat limit terlampaui
+
+### Rate limit
+
+```json
+{
+  "error": {
+    "message": "rate limit of 60 requests per minute exceeded",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+Mengembalikan **429 Too Many Requests**.
+
+### Limit belanja bulanan
+
+```json
+{
+  "error": {
+    "message": "monthly spend limit of $100.00 reached ($100.05 used this month)",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+Juga mengembalikan **429**.
+
+## Catatan
+
+- **Rate limit per-proses** — jika Anda menjalankan multiple instance API, rate limit efektif dikalikan jumlah instance.
+- **Limit belanja menggunakan cache 30 detik** — setelah sebuah request, pelacakan belanja bisa butuh hingga 30 detik untuk mencerminkan penggunaan terbaru.
+- Jika lookup belanja gagal, request tetap **diizinkan** (fail-open).
+- Ada juga rate limiter global di API gateway yang berlaku untuk semua endpoint.
+
+## Praktik terbaik
+
+- **Implementasikan exponential backoff** — saat menerima 429, tunggu dan coba lagi dengan delay yang meningkat.
+- **Pantau penggunaan** — cek dashboard Orvix Platform untuk belanja saat ini.
+- **Set alert** — konfigurasikan alert belanja mendekati limit bulanan untuk menghindari 429 tak terduga.
+
+### Contoh backoff (JavaScript)
+
+```js
+async function callOrvix(body, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch("https://api.orvix.id/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer orv-sk_live_...",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) return res.json();
+    if (res.status === 429 && i < retries - 1) {
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+      continue;
+    }
+    throw new Error(`Request failed: ${res.status}`);
+  }
+}
+```
+
+### Contoh backoff (Python)
+
+```python
+import time, requests
+
+def call_orvix(body, retries=3):
+    for i in range(retries):
+        response = requests.post(
+            "https://api.orvix.id/v1/chat/completions",
+            headers={"Authorization": "Bearer orv-sk_live_..."},
+            json=body,
+            timeout=60,
+        )
+        if response.ok:
+            return response.json()
+        if response.status_code == 429 and i < retries - 1:
+            time.sleep(1 * 2**i)
+            continue
+        response.raise_for_status()
+```

@@ -1,0 +1,44 @@
+---
+title: Autentikasi
+description: Cara kerja API key dan cara mengautentikasi request ke Orvix.
+---
+
+# Autentikasi
+
+Setiap request ke Orvix harus menyertakan API key yang valid di header `Authorization`:
+
+```
+Authorization: Bearer orv-sk_live_xxxxxxxx
+```
+
+## Format API key
+
+API key Orvix diawali dengan prefix `orv-sk_live_` diikuti token yang terenkode. Gunakan key secara penuh untuk autentikasi — jangan hapus prefix-nya.
+
+## Membuat key
+
+Buat dan kelola API key dari [Orvix Platform](https://platform.orvix.id/api-keys). Key terikat ke sebuah project dan memiliki permission (scope) tertentu.
+
+## Scope yang dibutuhkan
+
+Untuk memanggil AI router, key harus memiliki scope `ai:invoke`. Key tanpa scope ini akan mendapat error `401`.
+
+## Response error
+
+| HTTP status | Tipe error | Pesan |
+|---|---|---|
+| 401 | `authentication_error` | Missing Authorization header |
+| 401 | `authentication_error` | Invalid API key prefix |
+| 401 | `authentication_error` | Invalid API key signature |
+| 401 | `authentication_error` | API key has expired |
+| 401 | `authentication_error` | API key has been revoked |
+| 401 | `authentication_error` | Unknown API key |
+| 401 | `authentication_error` | API key is not permitted to call the AI router |
+| 503 | `server_error` | AI router is not configured on this deployment |
+
+## Praktik terbaik
+
+- **Simpan key di environment variable** — jangan hardcode key di source code.
+- **Gunakan key berbeda per environment** — pisahkan key development dan production.
+- **Rotasi key secara berkala** — revoke key lama dan buat yang baru dari platform.
+- **Batasi scope** — berikan hanya scope minimum yang dibutuhkan key.

@@ -1,0 +1,52 @@
+---
+title: Pendahuluan
+description: Orvix adalah AI router kompatibel dengan OpenAI yang memungkinkan Anda memanggil berbagai provider LLM melalui satu API terpadu.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Pendahuluan
+
+**Orvix** adalah AI router kompatibel dengan OpenAI. Kirim request ke satu endpoint dan Orvix akan meneruskannya ke provider yang Anda konfigurasikan — tanpa mengubah SDK, tanpa terikat satu provider.
+
+## Kenapa Orvix?
+
+- **Kompatibel dengan OpenAI** — cukup ubah `baseURL` di SDK OpenAI apa pun.
+- **Multi-provider** — mendukung OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Ollama, dan endpoint kustom.
+- **API terpadu** — satu key, satu base URL, satu format request untuk semua provider.
+- **Siap untuk streaming** — streaming SSE standar yang bekerja dengan kode streaming OpenAI yang ada.
+
+## Base URL
+
+```
+https://api.orvix.id/v1
+```
+
+Semua endpoint berada di bawah `/v1`.
+
+## Autentikasi
+
+Request diautentikasi dengan API key project:
+
+```
+Authorization: Bearer orv-sk_live_xxxxxxxx
+```
+
+Buat dan kelola key dari [Orvix Platform](https://platform.orvix.id/api-keys).
+
+## Langkah berikutnya
+
+<Cards>
+  <Card title="Quickstart" href="/id/quickstart">
+    Buat request pertama Anda dalam satu menit.
+  </Card>
+  <Card title="Autentikasi" href="/id/authentication">
+    Pelajari cara kerja API key.
+  </Card>
+  <Card title="Chat Completions" href="/id/chat-completions">
+    Kirim pesan dan dapatkan respons.
+  </Card>
+  <Card title="Streaming" href="/id/streaming">
+    Stream token secara real-time melalui SSE.
+  </Card>
+</Cards>

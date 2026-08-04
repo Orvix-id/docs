@@ -1,0 +1,184 @@
+---
+title: Streaming
+description: Stream token chat completion secara real-time menggunakan Server-Sent Events (SSE).
+---
+
+# Streaming
+
+Set `"stream": true` di request Anda untuk menerima token saat dihasilkan melalui Server-Sent Events (SSE).
+
+## Request
+
+```json
+{
+  "model": "gpt-4.1-mini",
+  "messages": [{"role": "user", "content": "Write a short haiku"}],
+  "stream": true
+}
+```
+
+## Format respons
+
+Setiap chunk adalah event SSE `data:` yang berisi objek `chat.completion.chunk`. Stream berakhir dengan `data: [DONE]`.
+
+```
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4.1-mini","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4.1-mini","choices":[{"index":0,"delta":{"content":"Autumn"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-abc123","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4.1-mini","choices":[{"index":0,"delta":{"content":" leaves"},"finish_reason":null}]}
+
+data: [DONE]
+```
+
+Field `delta` membawa konten inkremental. Chunk terakhir menyertakan `finish_reason: "stop"` dan mungkin menyertakan `usage`.
+
+## Contoh kode
+
+### cURL
+
+```bash
+curl -N https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4.1-mini",
+    "messages": [{"role": "user", "content": "Write a short haiku"}],
+    "stream": true
+  }'
+```
+
+### Windows — curl.exe
+
+```powershell
+$body = @'
+{
+  "model": "gpt-4.1-mini",
+  "messages": [{"role": "user", "content": "Write a short haiku"}],
+  "stream": true
+}
+'@
+
+curl.exe --no-buffer "https://api.orvix.id/v1/chat/completions" `
+  -H "Authorization: Bearer orv-sk_live_..." `
+  -H "Content-Type: application/json" `
+  --data-raw $body
+```
+
+### JavaScript (Node.js 18+)
+
+```js
+const response = await fetch("https://api.orvix.id/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer orv-sk_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-4.1-mini",
+    messages: [{ role: "user", content: "Write a short haiku" }],
+    stream: true,
+  }),
+});
+
+if (!response.body) throw new Error("Streaming is not supported");
+const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+
+while (true) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  process.stdout.write(value);
+}
+```
+
+### TypeScript (Node.js 18+)
+
+```ts
+const response = await fetch("https://api.orvix.id/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer orv-sk_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-4.1-mini",
+    messages: [{ role: "user", content: "Write a short haiku" }],
+    stream: true,
+  }),
+});
+
+const reader = response.body
+  ?.pipeThrough(new TextDecoderStream())
+  .getReader();
+if (!reader) throw new Error("Streaming is not supported");
+
+for (;;) {
+  const { value, done } = await reader.read();
+  if (done) break;
+  process.stdout.write(value);
+}
+```
+
+### Python — requests
+
+```python
+import requests
+
+with requests.post(
+    "https://api.orvix.id/v1/chat/completions",
+    headers={"Authorization": "Bearer orv-sk_live_..."},
+    json={
+        "model": "gpt-4.1-mini",
+        "messages": [{"role": "user", "content": "Write a short haiku"}],
+        "stream": True,
+    },
+    stream=True,
+    timeout=60,
+) as response:
+    response.raise_for_status()
+    for line in response.iter_lines(decode_unicode=True):
+        if line:
+            print(line)
+```
+
+### Python — OpenAI SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="orv-sk_live_...",
+    base_url="https://api.orvix.id/v1",
+)
+
+stream = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "Write a short haiku"}],
+    stream=True,
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+### JavaScript — OpenAI SDK
+
+```js
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "orv-sk_live_...",
+  baseURL: "https://api.orvix.id/v1",
+});
+
+const stream = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  messages: [{ role: "user", content: "Write a short haiku" }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content || "");
+}
+```

@@ -1,0 +1,134 @@
+---
+title: Model
+description: Daftar dan identifikasi model yang tersedia melalui Orvix AI router.
+---
+
+# Model
+
+## Daftar model
+
+`GET /v1/models`
+
+Mengembalikan semua model yang tersedia untuk project Anda berdasarkan provider yang dikonfigurasikan.
+
+### Request
+
+```bash
+curl https://api.orvix.id/v1/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+### Response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4.1-mini",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "openai"
+    },
+    {
+      "id": "claude-sonnet-4-20250514",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "orvix/gpt-4.1",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "orvix"
+    }
+  ]
+}
+```
+
+## Format ID model
+
+ID model mengikuti penamaan asli dari provider. Orvix mendukung dua mode pendanaan:
+
+| Mode | Prefix | Penagihan | Cara kerja |
+|---|---|---|---|
+| **BYOK** | *(tidak ada)* | Tagihan provider Anda | Anda membawa API key sendiri — Orvix merutekan traffic melaluinya |
+| **Orvix Managed** | `orvix/` | Orvix Credits | Orvix menangani hubungan dengan provider — tidak perlu API key dari Anda |
+
+---
+
+### BYOK — Bring Your Own Key
+
+BYOK memungkinkan Anda menggunakan **API key milik sendiri** untuk provider manapun yang didukung. Anda tetap punya kontrol penuh atas akun provider sementara Orvix bertindak sebagai lapisan routing terpadu.
+
+**Cara kerja:**
+
+1. Tambahkan API key provider Anda di [Orvix Platform](https://platform.orvix.id/providers) (misalnya key OpenAI, Anthropic, atau Gemini).
+2. Panggil model menggunakan **ID asli**-nya — tanpa prefix.
+3. Orvix merutekan request ke provider yang sesuai menggunakan key yang Anda konfigurasikan.
+
+**Contoh — memanggil GPT‑4.1 Mini dengan key OpenAI milik sendiri:**
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4.1-mini",
+    "messages": [{"role": "user", "content": "Halo!"}]
+  }'
+```
+
+Karena ID model-nya `gpt-4.1-mini` (tanpa prefix `orvix/`), Orvix mencari key OpenAI yang sudah Anda konfigurasikan dan meneruskan request. Anda membayar OpenAI secara langsung — Orvix **tidak** menambahkan markup apapun.
+
+> **Provider BYOK yang didukung:** `openai`, `anthropic`, `gemini`, `deepseek`, `openrouter`, `ollama`, dan endpoint `custom` apapun — [lihat daftar lengkap di bawah](#provider-yang-didukung).
+
+---
+
+### Orvix Managed Models
+
+Model dengan prefix `orvix/` **dikelola sepenuhnya oleh Orvix**. Anda tidak perlu API key provider sendiri — Orvix memiliki dan menjaga akun provider di belakang layar dan menagih Anda melalui **Orvix Credits**.
+
+**Cara kerja:**
+
+1. Isi ulang Orvix Credits dari [Platform](https://platform.orvix.id/billing).
+2. Panggil model apapun dengan prefix `orvix/`.
+3. Prefix `orvix/` dilepas secara internal — `orvix/gpt-4.1` diselesaikan ke plan `gpt-4.1` yang terkelola di belakang layar.
+
+**Contoh:**
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/gpt-4.1",
+    "messages": [{"role": "user", "content": "Halo!"}]
+  }'
+```
+
+**Kapan menggunakan Orvix Managed Models:**
+
+- Anda tidak ingin mengelola API key provider atau hubungan penagihan.
+- Anda ingin satu tagihan terpadu melalui Orvix Credits.
+- Anda ingin akses instan ke model tanpa mendaftar ke setiap provider satu per satu.
+
+**Kapan menggunakan BYOK:**
+
+- Anda sudah memiliki API key dengan provider dan ingin tetap menggunakannya.
+- Anda membutuhkan rate limit spesifik atau harga negosiasi dengan provider.
+- Anda ingin pemakaian Anda muncul di dashboard dan penagihan provider sendiri.
+
+## Provider yang didukung
+
+| Provider | Default base URL |
+|---|---|
+| `openai` | `https://api.openai.com/v1` |
+| `anthropic` | `https://api.anthropic.com/v1` |
+| `gemini` | `https://generativelanguage.googleapis.com/v1beta` |
+| `deepseek` | `https://api.deepseek.com/v1` |
+| `openrouter` | `https://openrouter.ai/api/v1` |
+| `ollama` | `http://localhost:11434/v1` |
+| `custom` | *(base URL yang dikonfigurasikan)* |
+
+Kredensial provider dikonfigurasikan per-project dari Orvix Platform.

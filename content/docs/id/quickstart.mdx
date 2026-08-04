@@ -1,0 +1,82 @@
+---
+title: Quickstart
+description: Buat request AI pertama Anda melalui Orvix dalam satu menit.
+---
+
+# Quickstart
+
+## 1. Dapatkan API key
+
+Buat key dari [Orvix Platform](https://platform.orvix.id/api-keys). Key Anda diawali dengan `orv-sk_live_`.
+
+## 2. Install SDK (opsional)
+
+Anda bisa langsung menggunakan `fetch` di Node.js 18+. Jika lebih suka pakai SDK:
+
+```bash
+# Node.js
+npm install openai
+
+# Python
+pip install openai
+```
+
+## 3. Buat request pertama
+
+### Pakai OpenAI SDK (direkomendasikan)
+
+```js
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "orv-sk_live_...",
+  baseURL: "https://api.orvix.id/v1",
+});
+
+const completion = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  messages: [{ role: "user", content: "Halo dari Orvix!" }],
+});
+
+console.log(completion.choices[0].message.content);
+```
+
+### Pakai fetch
+
+```js
+const response = await fetch("https://api.orvix.id/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer orv-sk_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-4.1-mini",
+    messages: [{ role: "user", content: "Halo dari Orvix!" }],
+  }),
+});
+
+const data = await response.json();
+console.log(data.choices[0].message.content);
+```
+
+### Pakai cURL
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4.1-mini",
+    "messages": [{"role": "user", "content": "Halo dari Orvix!"}]
+  }'
+```
+
+## 4. Lihat model yang tersedia
+
+```bash
+curl https://api.orvix.id/v1/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+Selesai — Anda sudah merutekan request AI melalui Orvix.

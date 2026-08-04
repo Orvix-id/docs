@@ -48,14 +48,78 @@ curl https://api.orvix.id/v1/models \
 
 ## Model ID format
 
-Model IDs follow the provider's naming convention. Models prefixed with `orvix/` are managed models served through Orvix Credits:
+Model IDs follow the provider's original naming convention. Orvix supports two funding modes:
 
-| Prefix | Funding | Example |
-|---|---|---|
-| *(none)* | Bring-your-own-key (BYOK) | `gpt-4.1-mini`, `claude-sonnet-4-20250514` |
-| `orvix/` | Orvix Credits | `orvix/gpt-4.1` |
+<!-- The two-column table reserved for a compact overview -->
 
-When using an `orvix/` model, the prefix is stripped internally — `orvix/gpt-4.1` routes to the managed `gpt-4.1` plan.
+| Mode | Prefix | Billing | How it works |
+|---|---|---|---|
+| **BYOK** | *(none)* | Your provider bill | You bring your own API keys — Orvix routes traffic through them |
+| **Orvix Managed** | `orvix/` | Orvix Credits | Orvix handles the provider relationship — no keys needed from you |
+
+---
+
+### BYOK — Bring Your Own Key
+
+BYOK lets you use **your own API keys** for any supported provider. You keep full control of your provider accounts while Orvix acts as a unified routing layer.
+
+**How it works:**
+
+1. Add your provider API keys in the [Orvix Platform](https://platform.orvix.id/providers) (for example, an OpenAI key, an Anthropic key, or a Gemini key).
+2. Call the model using its **native ID** — no prefix needed.
+3. Orvix routes the request to the matching provider using the key you configured.
+
+**Example — calling GPT‑4.1 Mini with your own OpenAI key:**
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4.1-mini",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+Because the model ID is `gpt-4.1-mini` (no `orvix/` prefix), Orvix looks up your configured OpenAI key and forwards the request. You pay OpenAI directly — Orvix does **not** add any markup.
+
+> **Supported BYOK providers:** `openai`, `anthropic`, `gemini`, `deepseek`, `openrouter`, `ollama`, and any `custom` endpoint — [see full list below](#supported-providers).
+
+---
+
+### Orvix Managed Models
+
+Models prefixed with `orvix/` are **fully managed by Orvix**. You don't need your own provider keys — Orvix owns and maintains the underlying provider accounts and bills you through **Orvix Credits**.
+
+**How it works:**
+
+1. Top up Orvix Credits from the [Platform](https://platform.orvix.id/billing).
+2. Call any model prefixed with `orvix/`.
+3. The `orvix/` prefix is stripped internally — `orvix/gpt-4.1` resolves to the managed `gpt-4.1` plan behind the scenes.
+
+**Example:**
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/gpt-4.1",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+**When to use Orvix Managed Models:**
+
+- You don't want to manage provider API keys or billing relationships.
+- You need a single, consolidated bill through Orvix Credits.
+- You want instant access to models without signing up for each provider separately.
+
+**When to use BYOK:**
+
+- You already have API keys with providers and want to keep using them.
+- You need specific rate limits or negotiated pricing with a provider.
+- You want your usage to appear on the provider's own dashboard and billing.
 
 ## Supported providers
 
