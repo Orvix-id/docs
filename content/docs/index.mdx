@@ -1,0 +1,52 @@
+---
+title: Introduction
+description: Orvix is an OpenAI-compatible AI router that lets you call multiple LLM providers through a single, unified API.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Introduction
+
+**Orvix** is an OpenAI-compatible AI router. Send requests to one endpoint and Orvix routes them to your configured provider — no SDK changes, no provider lock-in.
+
+## Why Orvix?
+
+- **Drop-in OpenAI compatibility** — point any OpenAI SDK at Orvix by changing `baseURL`.
+- **Multi-provider** — supports OpenAI, Anthropic, Google Gemini, DeepSeek, OpenRouter, Ollama, and custom endpoints.
+- **Unified API** — one key, one base URL, one request format for every provider.
+- **Streaming ready** — standard SSE streaming that works with existing OpenAI streaming code.
+
+## Base URL
+
+```
+https://api.orvix.id/v1
+```
+
+All endpoints are mounted under `/v1`.
+
+## Authentication
+
+Requests authenticate with a project API key:
+
+```
+Authorization: Bearer orv-sk_live_xxxxxxxx
+```
+
+Create and manage keys from the [Orvix Platform](https://platform.orvix.id/api-keys).
+
+## What's next?
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart">
+    Make your first request in under a minute.
+  </Card>
+  <Card title="Authentication" href="/docs/authentication">
+    Learn how API keys work.
+  </Card>
+  <Card title="Chat Completions" href="/docs/chat-completions">
+    Send messages and get responses.
+  </Card>
+  <Card title="Streaming" href="/docs/streaming">
+    Stream tokens in real time via SSE.
+  </Card>
+</Cards>

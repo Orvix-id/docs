@@ -1,0 +1,72 @@
+---
+title: Models
+description: List and identify models available through the Orvix AI router.
+---
+
+# Models
+
+## List models
+
+`GET /v1/models`
+
+Returns all models available to your project based on your configured providers.
+
+### Request
+
+```bash
+curl https://api.orvix.id/v1/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+### Response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4.1-mini",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "openai"
+    },
+    {
+      "id": "claude-sonnet-4-20250514",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "orvix/gpt-4.1",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "orvix"
+    }
+  ]
+}
+```
+
+## Model ID format
+
+Model IDs follow the provider's naming convention. Models prefixed with `orvix/` are managed models served through Orvix Credits:
+
+| Prefix | Funding | Example |
+|---|---|---|
+| *(none)* | Bring-your-own-key (BYOK) | `gpt-4.1-mini`, `claude-sonnet-4-20250514` |
+| `orvix/` | Orvix Credits | `orvix/gpt-4.1` |
+
+When using an `orvix/` model, the prefix is stripped internally — `orvix/gpt-4.1` routes to the managed `gpt-4.1` plan.
+
+## Supported providers
+
+| Provider | Default base URL |
+|---|---|
+| `openai` | `https://api.openai.com/v1` |
+| `anthropic` | `https://api.anthropic.com/v1` |
+| `gemini` | `https://generativelanguage.googleapis.com/v1beta` |
+| `deepseek` | `https://api.deepseek.com/v1` |
+| `openrouter` | `https://openrouter.ai/api/v1` |
+| `ollama` | `http://localhost:11434/v1` |
+| `custom` | *(configured base URL)* |
+
+Provider credentials are configured per-project from the Orvix Platform.

@@ -1,0 +1,24 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "---Overview---",
+    "index",
+    "quickstart",
+    "---API Reference---",
+    "authentication",
+    "models",
+    "chat-completions",
+    "streaming",
+    "errors",
+    "rate-limits",
+    "---Bahasa Indonesia---",
+    "id/index",
+    "id/quickstart",
+    "id/authentication",
+    "id/models",
+    "id/chat-completions",
+    "id/streaming",
+    "id/errors",
+    "id/rate-limits"
+  ]
+}

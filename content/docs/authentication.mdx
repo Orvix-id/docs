@@ -1,0 +1,44 @@
+---
+title: Authentication
+description: How API keys work and how to authenticate requests to Orvix.
+---
+
+# Authentication
+
+Every request to Orvix must include a valid API key in the `Authorization` header:
+
+```
+Authorization: Bearer orv-sk_live_xxxxxxxx
+```
+
+## API key format
+
+Orvix API keys start with the prefix `orv-sk_live_` followed by an encoded token. The full key is used for authentication — do not strip the prefix.
+
+## Creating keys
+
+Create and manage API keys from the [Orvix Platform](https://platform.orvix.id/api-keys). Keys are scoped to a project and carry specific permissions (scopes).
+
+## Required scope
+
+To call the AI router, a key must have the `ai:invoke` scope. Keys without this scope will receive a `401` error.
+
+## Error responses
+
+| HTTP status | Error type | Message |
+|---|---|---|
+| 401 | `authentication_error` | Missing Authorization header |
+| 401 | `authentication_error` | Invalid API key prefix |
+| 401 | `authentication_error` | Invalid API key signature |
+| 401 | `authentication_error` | API key has expired |
+| 401 | `authentication_error` | API key has been revoked |
+| 401 | `authentication_error` | Unknown API key |
+| 401 | `authentication_error` | API key is not permitted to call the AI router |
+| 503 | `server_error` | AI router is not configured on this deployment |
+
+## Best practices
+
+- **Store keys in environment variables** — never hardcode keys in source files.
+- **Use different keys per environment** — separate keys for development and production.
+- **Rotate keys regularly** — revoke old keys and create new ones from the platform.
+- **Limit scopes** — only grant the minimum scopes a key needs.

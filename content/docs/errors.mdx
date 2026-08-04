@@ -1,0 +1,134 @@
+---
+title: Errors
+description: Error response format and error types returned by the Orvix AI router.
+---
+
+# Errors
+
+The AI router returns errors in the OpenAI error format:
+
+```json
+{
+  "error": {
+    "message": "Invalid API key signature",
+    "type": "authentication_error"
+  }
+}
+```
+
+## Error types
+
+| HTTP status | `type` | Description |
+|---|---|---|
+| 400 | `invalid_request_error` | Malformed request, unknown model, invalid `orvix/` prefix |
+| 401 | `authentication_error` | Invalid, expired, or revoked API key |
+| 402 | `insufficient_credits` | Not enough Orvix Credits for managed models |
+| 403 | `permission_error` | API key not allowed for the requested funding source |
+| 429 | `rate_limit_error` | Per-key rate limit or monthly spend limit exceeded |
+| 502 | `server_error` | All upstream provider routes failed |
+| 503 | `server_error` | AI router not configured on this deployment |
+| 500 | `server_error` | Internal server error |
+
+## Common error examples
+
+### Unknown model
+
+```json
+{
+  "error": {
+    "message": "no enabled provider serves model 'gpt-5'",
+    "type": "invalid_request_error"
+  }
+}
+```
+
+### Insufficient credits
+
+```json
+{
+  "error": {
+    "message": "insufficient credits",
+    "type": "insufficient_credits"
+  }
+}
+```
+
+### Rate limit exceeded
+
+```json
+{
+  "error": {
+    "message": "rate limit of 60 requests per minute exceeded",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+### Monthly spend limit
+
+```json
+{
+  "error": {
+    "message": "monthly spend limit of $50.00 reached ($50.12 used this month)",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+### Upstream failure (502)
+
+```json
+{
+  "error": {
+    "message": "all routes failed for model 'gpt-4.1-mini'",
+    "type": "server_error"
+  }
+}
+```
+
+## Mid-stream errors
+
+During streaming, if an upstream error occurs mid-stream, the router emits an error event rather than aborting the connection:
+
+```
+data: {"error":{"message":"upstream timeout","type":"server_error"}}
+data: [DONE]
+```
+
+## Handling errors
+
+### JavaScript
+
+```js
+const response = await fetch("https://api.orvix.id/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer orv-sk_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ model: "gpt-4.1-mini", messages: [...] }),
+});
+
+if (!response.ok) {
+  const { error } = await response.json();
+  console.error(`${error.type}: ${error.message}`);
+  return;
+}
+```
+
+### Python
+
+```python
+import requests
+
+response = requests.post(
+    "https://api.orvix.id/v1/chat/completions",
+    headers={"Authorization": "Bearer orv-sk_live_..."},
+    json={"model": "gpt-4.1-mini", "messages": [...]},
+    timeout=60,
+)
+
+if not response.ok:
+    error = response.json()["error"]
+    raise RuntimeError(f"{error['type']}: {error['message']}")
+```

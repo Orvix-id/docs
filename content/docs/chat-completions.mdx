@@ -1,0 +1,220 @@
+---
+title: Chat Completions
+description: Send a chat request and receive a single OpenAI-compatible JSON response.
+---
+
+# Chat Completions
+
+`POST /v1/chat/completions`
+
+Send a chat request and receive a non-streaming response.
+
+## Request body
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `model` | string | Yes | — | Model ID (e.g. `gpt-4.1-mini`, `orvix/gpt-4.1`) |
+| `messages` | array | Yes | — | Array of `{ role, content }` objects |
+| `stream` | boolean | No | `false` | Set to `true` for streaming (see [Streaming](/streaming)) |
+| `temperature` | number | No | `0.7` | Sampling temperature |
+| `max_tokens` | integer | No | `4096` | Maximum tokens in the response |
+
+### Example request body
+
+```json
+{
+  "model": "gpt-4.1-mini",
+  "messages": [
+    { "role": "system", "content": "You are a helpful assistant." },
+    { "role": "user", "content": "Explain Rust traits in one paragraph." }
+  ],
+  "stream": false,
+  "temperature": 0.7,
+  "max_tokens": 1024
+}
+```
+
+## Response
+
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1720000000,
+  "model": "gpt-4.1-mini",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Traits in Rust define shared behavior..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 18,
+    "completion_tokens": 42,
+    "total_tokens": 60
+  }
+}
+```
+
+Every response includes an `x-request-id` header for tracing.
+
+## Code examples
+
+### cURL
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4.1-mini",
+    "messages": [{"role": "user", "content": "Explain Rust traits"}],
+    "stream": false
+  }'
+```
+
+### PowerShell — Invoke-RestMethod
+
+```powershell
+$headers = @{ Authorization = "Bearer orv-sk_live_..." }
+$body = @{
+  model = "gpt-4.1-mini"
+  messages = @(
+    @{ role = "user"; content = "Explain Rust traits" }
+  )
+  stream = $false
+} | ConvertTo-Json -Depth 5
+
+$response = Invoke-RestMethod `
+  -Uri "https://api.orvix.id/v1/chat/completions" `
+  -Method Post `
+  -Headers $headers `
+  -ContentType "application/json" `
+  -Body $body
+
+$response.choices[0].message.content
+```
+
+### JavaScript (Node.js 18+)
+
+```js
+const response = await fetch("https://api.orvix.id/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer orv-sk_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-4.1-mini",
+    messages: [{ role: "user", content: "Explain Rust traits" }],
+    stream: false,
+  }),
+});
+
+if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+const completion = await response.json();
+console.log(completion.choices[0].message.content);
+```
+
+### TypeScript (Node.js 18+)
+
+```ts
+type Completion = {
+  choices: Array<{ message: { role: "assistant"; content: string } }>;
+};
+
+const response = await fetch("https://api.orvix.id/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer orv-sk_live_...",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "gpt-4.1-mini",
+    messages: [{ role: "user", content: "Explain Rust traits" }],
+    stream: false,
+  }),
+});
+
+if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+const completion = (await response.json()) as Completion;
+console.log(completion.choices[0].message.content);
+```
+
+### Python — requests
+
+```python
+import requests
+
+response = requests.post(
+    "https://api.orvix.id/v1/chat/completions",
+    headers={"Authorization": "Bearer orv-sk_live_..."},
+    json={
+        "model": "gpt-4.1-mini",
+        "messages": [{"role": "user", "content": "Explain Rust traits"}],
+        "stream": False,
+    },
+    timeout=60,
+)
+response.raise_for_status()
+print(response.json()["choices"][0]["message"]["content"])
+```
+
+### Python — OpenAI SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="orv-sk_live_...",
+    base_url="https://api.orvix.id/v1",
+)
+
+completion = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "Explain Rust traits"}],
+)
+
+print(completion.choices[0].message.content)
+```
+
+### JavaScript — OpenAI SDK
+
+```js
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "orv-sk_live_...",
+  baseURL: "https://api.orvix.id/v1",
+});
+
+const completion = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  messages: [{ role: "user", content: "Explain Rust traits" }],
+});
+
+console.log(completion.choices[0].message.content);
+```
+
+### TypeScript — OpenAI SDK
+
+```ts
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "orv-sk_live_...",
+  baseURL: "https://api.orvix.id/v1",
+});
+
+const completion = await client.chat.completions.create({
+  model: "gpt-4.1-mini",
+  messages: [{ role: "user", content: "Explain Rust traits" }],
+});
+
+const content: string | null = completion.choices[0].message.content;
+console.log(content);
+```

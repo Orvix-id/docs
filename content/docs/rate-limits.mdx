@@ -1,0 +1,101 @@
+---
+title: Rate Limits
+description: Per-key rate limiting and monthly spend limits enforced by the Orvix AI router.
+---
+
+# Rate Limits
+
+Each API key has two configurable limits:
+
+| Limit | Unit | Behavior |
+|---|---|---|
+| **Rate limit** | Requests per minute | Sliding 60-second window per process |
+| **Monthly spend limit** | USD | Cumulative spend for the current calendar month |
+
+Both limits are set per key from the [Orvix Platform](https://platform.orvix.id/api-keys).
+
+## When limits are exceeded
+
+### Rate limit
+
+```json
+{
+  "error": {
+    "message": "rate limit of 60 requests per minute exceeded",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+Returns **429 Too Many Requests**.
+
+### Monthly spend limit
+
+```json
+{
+  "error": {
+    "message": "monthly spend limit of $100.00 reached ($100.05 used this month)",
+    "type": "rate_limit_error"
+  }
+}
+```
+
+Also returns **429**.
+
+## Notes
+
+- **Rate limits are per-process** — if you run multiple API instances, the effective rate limit is multiplied by the number of instances.
+- **Spend limits use a 30-second cache** — after a request, spend tracking may take up to 30 seconds to reflect the latest usage.
+- If the spend lookup fails, the request is **allowed through** (fail-open).
+- There is also a global rate limiter on the API gateway that applies to all endpoints.
+
+## Best practices
+
+- **Implement exponential backoff** — when you receive a 429, wait and retry with increasing delay.
+- **Monitor your usage** — check the Orvix Platform dashboard for current spend.
+- **Set alerts** — configure spend alerts near your monthly limit to avoid unexpected 429s.
+
+### Backoff example (JavaScript)
+
+```js
+async function callOrvix(body, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch("https://api.orvix.id/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer orv-sk_live_...",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) return res.json();
+    if (res.status === 429 && i < retries - 1) {
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+      continue;
+    }
+    throw new Error(`Request failed: ${res.status}`);
+  }
+}
+```
+
+### Backoff example (Python)
+
+```python
+import time, requests
+
+def call_orvix(body, retries=3):
+    for i in range(retries):
+        response = requests.post(
+            "https://api.orvix.id/v1/chat/completions",
+            headers={"Authorization": "Bearer orv-sk_live_..."},
+            json=body,
+            timeout=60,
+        )
+        if response.ok:
+            return response.json()
+        if response.status_code == 429 and i < retries - 1:
+            time.sleep(1 * 2**i)
+            continue
+        response.raise_for_status()
+```
