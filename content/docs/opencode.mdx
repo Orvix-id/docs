@@ -1,0 +1,168 @@
+---
+title: OpenCode Setup
+description: Add Orvix to OpenCode in one paste — one config file, one API key, no local model setup.
+---
+
+# OpenCode Setup
+
+This is the shortest path from nothing to a working coding agent on Orvix. Paste
+one config file, drop in one key, restart. No local model downloads, no
+per-provider accounts, no environment variables to wire up.
+
+You do **not** need your own OpenAI or Anthropic key for this. Models prefixed
+with `orvix/` are managed by Orvix — we hold the provider relationship, and you
+pay in Orvix Credits.
+
+## 1. Get an API key
+
+Create one at [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys).
+It starts with `orv-sk_live_`.
+
+## 2. Open your OpenCode config
+
+| OS | Path |
+|---|---|
+| macOS / Linux | `~/.config/opencode/opencode.json` |
+| Windows | `%APPDATA%\opencode\opencode.json` |
+
+Create the file if it does not exist:
+
+```bash
+mkdir -p ~/.config/opencode
+touch ~/.config/opencode/opencode.json
+```
+
+## 3. Paste this
+
+Replace `orv-sk_live_...` with your key and save.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "orvix": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Orvix",
+      "options": {
+        "baseURL": "https://api.orvix.id/v1",
+        "apiKey": "orv-sk_live_..."
+      },
+      "models": {
+        "orvix/deepseek-v4-flash": {
+          "name": "DeepSeek V4 Flash",
+          "limit": {
+            "output": 65536
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+<Callout type="info">
+  `@ai-sdk/openai-compatible` is the right package here. Use `@ai-sdk/openai`
+  only for providers that serve `/v1/responses` — Orvix serves
+  `/v1/chat/completions`, which is what the compatible package speaks.
+</Callout>
+
+## 4. Restart OpenCode
+
+Quit and reopen it. The provider is picked up at startup, so a running instance
+will not see the new file.
+
+Then pick the model:
+
+```
+/models
+```
+
+`Orvix → DeepSeek V4 Flash` appears in the list. Select it and start working.
+
+## Keeping the key out of the file
+
+The config above is the fastest way to get running. Once it works, move the key
+into your environment so it is not sitting in a file you might share or commit:
+
+```json
+"apiKey": "{env:ORVIX_API_KEY}"
+```
+
+```bash
+# ~/.zshrc or ~/.bashrc
+export ORVIX_API_KEY="orv-sk_live_..."
+```
+
+OpenCode reads `{env:NAME}` at startup, so restart after adding it.
+
+## Adding more models
+
+Each entry under `models` is one line in the picker. Add whichever you want to
+switch between:
+
+```json
+"models": {
+  "orvix/deepseek-v4-flash": {
+    "name": "DeepSeek V4 Flash",
+    "limit": { "output": 65536 }
+  },
+  "orvix/gpt-5.6-luna": {
+    "name": "GPT-5.6 Luna",
+    "limit": { "output": 128000 }
+  },
+  "orvix/kimi-k3": {
+    "name": "Kimi K3",
+    "limit": { "output": 16384 }
+  }
+}
+```
+
+To see everything your key can reach:
+
+```bash
+curl https://api.orvix.id/v1/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+Availability changes as models are added or retired, so trust that list over
+this page. See [Models](/docs/models) for what the `orvix/` prefix means and how
+managed models differ from bringing your own key.
+
+## If something is wrong
+
+**The provider is missing from `/models`.** OpenCode only reads the config at
+startup — restart it. If it is still absent, the file is not valid JSON; a
+trailing comma is the usual culprit. Check with:
+
+```bash
+python3 -m json.tool ~/.config/opencode/opencode.json
+```
+
+**`401 Missing Authorization header` or `invalid API key`.** The key is wrong,
+revoked, or still the `orv-sk_live_...` placeholder. Confirm it directly:
+
+```bash
+curl https://api.orvix.id/v1/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+A `200` with a model list means the key is fine and the problem is in the
+config file.
+
+**`no BYOK route serves model '...'`.** The model id is missing its `orvix/`
+prefix. Without it, Orvix looks for *your* provider key rather than serving the
+managed model — see [Models](/docs/models). Use `orvix/deepseek-v4-flash`, not
+`deepseek-v4-flash`.
+
+**`402` or "insufficient credits".** The project is out of Orvix Credits. Top up
+at [platform.orvix.id/billing](https://platform.orvix.id/billing).
+
+**Requests are slow or time out.** Run the same request with `curl` first. If
+`curl` is fast and OpenCode is not, the problem is local — usually a proxy or
+VPN sitting between you and the API.
+
+## What next
+
+- [Models](/docs/models) — the full catalogue, and managed versus your own keys
+- [Rate limits](/docs/rate-limits) — what your plan allows
+- [Errors](/docs/errors) — every error shape the API returns

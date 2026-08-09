@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "quickstart",
+    "opencode",
     "authentication",
     "models",
     "chat-completions",
