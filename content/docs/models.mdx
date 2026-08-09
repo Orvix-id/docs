@@ -121,6 +121,66 @@ curl https://api.orvix.id/v1/chat/completions \
 - You need specific rate limits or negotiated pricing with a provider.
 - You want your usage to appear on the provider's own dashboard and billing.
 
+---
+
+## `orvix/auto` — let Orvix pick the model
+
+Managed models span a wide price range. Sending every request to the most
+capable one overpays for the easy ones; sending everything to the cheapest
+gives poor answers on the hard ones. `orvix/auto` reads each request and picks
+a model for it.
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/auto",
+    "messages": [{"role": "user", "content": "Translate to French: good morning"}]
+  }'
+```
+
+### What it looks at
+
+Selection is based on the shape of the request, not a separate model call — so
+it adds no latency and costs nothing on top.
+
+| Signal | Effect |
+|---|---|
+| Function tools present | Highest tier — tool loops need a capable model |
+| Very large context, or a long conversation | Highest tier |
+| Wording like "debug", "why does", "step by step", "trade-off" | Highest tier |
+| A fenced code block | Middle tier |
+| Short prompt, or "summarize" / "translate" / "classify" | Cheapest tier |
+
+### Knowing what you were charged for
+
+`orvix/auto` never appears in a response. The `model` field names the model
+that actually ran, and two headers explain the choice:
+
+```http
+x-orvix-auto-tier: heavy
+x-orvix-auto-reason: tools_requested
+```
+
+So a response to `orvix/auto` might come back with
+`"model": "orvix/gpt-5.6-terra"` — that is the model you are billed for, at its
+normal published rate. `orvix/auto` adds no markup; it only decides which rate
+applies.
+
+<Callout type="warn">
+  Because the chosen model varies with the request, so does the cost. A request
+  that trips a "highest tier" signal is billed at that model's rate. If you need
+  a predictable per-request price, name a model directly instead.
+</Callout>
+
+### When not to use it
+
+- You need every request to hit one specific model (evaluations, reproducibility).
+- You have a fixed budget per request and cannot tolerate the variance.
+- Your prompts are unusual enough that the signals above misread them — the
+  `x-orvix-auto-reason` header tells you when this is happening.
+
 ## Supported providers
 
 | Provider | Default base URL |

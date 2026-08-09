@@ -121,6 +121,21 @@ ingin Anda pakai bergantian:
 }
 ```
 
+Ada juga `orvix/auto`, yang memilih model per request — yang murah untuk prompt
+pendek, yang mampu untuk tool use dan konteks panjang. Tambahkan seperti entri
+lain:
+
+```json
+"orvix/auto": {
+  "name": "Orvix Auto",
+  "limit": { "output": 65536 }
+}
+```
+
+Respons menyebutkan model yang benar-benar dipakai, dan Anda ditagih dengan
+tarif model tersebut. Lihat
+[Models](/docs/id/models#orvixauto--biarkan-orvix-yang-memilih-model).
+
 Untuk melihat semua yang bisa dijangkau key Anda:
 
 ```bash

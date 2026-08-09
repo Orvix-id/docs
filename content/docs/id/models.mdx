@@ -119,6 +119,67 @@ curl https://api.orvix.id/v1/chat/completions \
 - Anda membutuhkan rate limit spesifik atau harga negosiasi dengan provider.
 - Anda ingin pemakaian Anda muncul di dashboard dan penagihan provider sendiri.
 
+---
+
+## `orvix/auto` — biarkan Orvix yang memilih model
+
+Rentang harga model terkelola cukup lebar. Mengirim semua request ke model
+termahal berarti membayar lebih untuk pekerjaan ringan; mengirim semuanya ke
+yang termurah menghasilkan jawaban buruk untuk pekerjaan berat. `orvix/auto`
+membaca tiap request lalu memilihkan modelnya.
+
+```bash
+curl https://api.orvix.id/v1/chat/completions \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/auto",
+    "messages": [{"role": "user", "content": "Terjemahkan ke Inggris: selamat pagi"}]
+  }'
+```
+
+### Apa yang dilihatnya
+
+Pemilihan didasarkan pada bentuk request, bukan panggilan model terpisah —
+jadi tidak menambah latensi dan tidak ada biaya tambahan.
+
+| Sinyal | Efek |
+|---|---|
+| Ada function tools | Tier tertinggi — tool loop butuh model yang mampu |
+| Konteks sangat besar, atau percakapan panjang | Tier tertinggi |
+| Kata seperti "debug", "why does", "step by step", "trade-off" | Tier tertinggi |
+| Ada blok kode berpagar | Tier menengah |
+| Prompt pendek, atau "summarize" / "translate" / "classify" | Tier termurah |
+
+### Mengetahui apa yang ditagihkan
+
+`orvix/auto` tidak pernah muncul di respons. Field `model` menyebutkan model
+yang benar-benar dipakai, dan dua header menjelaskan pilihannya:
+
+```http
+x-orvix-auto-tier: heavy
+x-orvix-auto-reason: tools_requested
+```
+
+Jadi respons untuk `orvix/auto` bisa kembali dengan
+`"model": "orvix/gpt-5.6-terra"` — itulah model yang ditagihkan, dengan tarif
+normalnya. `orvix/auto` tidak menambahkan markup; ia hanya menentukan tarif
+mana yang berlaku.
+
+<Callout type="warn">
+  Karena model yang dipilih berubah mengikuti request, biayanya pun berubah.
+  Request yang memicu sinyal "tier tertinggi" ditagih dengan tarif model
+  tersebut. Kalau Anda butuh harga per-request yang pasti, sebut nama modelnya
+  langsung.
+</Callout>
+
+### Kapan sebaiknya tidak dipakai
+
+- Anda butuh semua request memakai satu model tertentu (evaluasi, reproduktifitas).
+- Anda punya anggaran tetap per request dan tidak bisa menerima variasi.
+- Prompt Anda cukup tidak lazim sehingga sinyal di atas salah membacanya —
+  header `x-orvix-auto-reason` memberi tahu kapan itu terjadi.
+
 ## Provider yang didukung
 
 | Provider | Default base URL |

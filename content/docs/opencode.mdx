@@ -117,6 +117,20 @@ switch between:
 }
 ```
 
+There is also `orvix/auto`, which picks a model per request — cheap ones for
+short prompts, capable ones for tool use and long context. Add it like any
+other entry:
+
+```json
+"orvix/auto": {
+  "name": "Orvix Auto",
+  "limit": { "output": 65536 }
+}
+```
+
+The response names the model it actually used, and you are billed at that
+model's rate. See [Models](/docs/models#orvixauto--let-orvix-pick-the-model).
+
 To see everything your key can reach:
 
 ```bash
