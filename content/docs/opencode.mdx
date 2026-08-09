@@ -171,6 +171,16 @@ managed model — see [Models](/docs/models). Use `orvix/deepseek-v4-flash`, not
 **`402` or "insufficient credits".** The project is out of Orvix Credits. Top up
 at [platform.orvix.id/billing](https://platform.orvix.id/billing).
 
+**"accepts at most 128 tools".** OpenAI's models cap function tools at 128, and
+OpenCode enables more than that by default once a few MCP servers are
+connected. The limit belongs to the model, not to Orvix, so it applies to every
+`orvix/gpt-5.6-*` id.
+
+Either disable some MCP servers, or use a model without that cap —
+`orvix/deepseek-v4-flash` and `orvix/kimi-k3` have none. `orvix/auto` handles
+this for you: it counts the tools in the request and only picks a model that
+accepts them.
+
 **Requests are slow or time out.** Run the same request with `curl` first. If
 `curl` is fast and OpenCode is not, the problem is local — usually a proxy or
 VPN sitting between you and the API.

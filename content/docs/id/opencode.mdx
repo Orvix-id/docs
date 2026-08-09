@@ -177,6 +177,16 @@ melayani model terkelola — lihat [Models](/docs/id/models). Gunakan
 **`402` atau "insufficient credits".** Orvix Credits di project itu habis. Isi
 ulang di [platform.orvix.id/billing](https://platform.orvix.id/billing).
 
+**"accepts at most 128 tools".** Model OpenAI membatasi function tools di 128,
+dan OpenCode mengaktifkan lebih dari itu begitu beberapa MCP server terpasang.
+Batas ini milik modelnya, bukan Orvix, jadi berlaku untuk semua id
+`orvix/gpt-5.6-*`.
+
+Matikan sebagian MCP server, atau pakai model tanpa batas itu —
+`orvix/deepseek-v4-flash` dan `orvix/kimi-k3` tidak punya. `orvix/auto`
+mengurusnya sendiri: ia menghitung tools di request dan hanya memilih model
+yang sanggup menerimanya.
+
 **Request lambat atau timeout.** Coba dulu request yang sama pakai `curl`.
 Kalau `curl` cepat tapi OpenCode lambat, masalahnya lokal — biasanya proxy atau
 VPN di antara Anda dan API.
