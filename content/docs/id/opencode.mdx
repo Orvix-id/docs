@@ -5,39 +5,15 @@ description: Pasang Orvix di OpenCode sekali paste — satu file config, satu AP
 
 # Setup OpenCode
 
-Ini jalur tersingkat dari nol sampai punya coding agent yang jalan di Orvix.
-Paste satu file config, isi satu key, restart. Tidak ada model yang perlu
-di-download, tidak perlu akun per-provider, tidak ada environment variable yang
-harus disiapkan.
+Copy prompt di bawah ke AI apapun (bahkan model free di Zen seperti Big Pickle / DeepSeek V4 Flash) — AI akan setup Orvix otomatis.
 
-Anda **tidak** perlu key OpenAI atau Anthropic sendiri untuk ini. Model dengan
-awalan `orvix/` dikelola oleh Orvix — kami yang memegang hubungan dengan
-provider, dan Anda membayar pakai Orvix Credits.
+```txt
+Tugas: Setup Orvix di OpenCode.
 
-## 1. Ambil API key
-
-Buat di [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys).
-Key-nya diawali `orv-sk_live_`.
-
-## 2. Buka config OpenCode
-
-| OS | Lokasi |
-|---|---|
-| macOS / Linux | `~/.config/opencode/opencode.json` |
-| Windows | `%APPDATA%\opencode\opencode.json` |
-
-Buat file-nya kalau belum ada:
-
-```bash
-mkdir -p ~/.config/opencode
-touch ~/.config/opencode/opencode.json
-```
-
-## 3. Paste ini
-
-Ganti `orv-sk_live_...` dengan key Anda, lalu simpan.
-
-```json
+Langkah:
+1. Minta API key Orvix ke user jika belum ada. Key ada di platform.orvix.id/api-keys, format orv-sk_live_... Jika user belum punya, arahkan ke sana.
+2. Buat file ~/.config/opencode/opencode.json (macOS/Linux) atau %APPDATA%\opencode\opencode.json (Windows). Buat folder jika belum ada: mkdir -p ~/.config/opencode.
+3. Isi dengan config ini, ganti orv-sk_live_... dengan key user:
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -49,150 +25,18 @@ Ganti `orv-sk_live_...` dengan key Anda, lalu simpan.
         "apiKey": "orv-sk_live_..."
       },
       "models": {
-        "orvix/deepseek-v4-flash": {
-          "name": "DeepSeek V4 Flash",
-          "limit": {
-            "output": 65536
-          }
-        }
+        "orvix/muse-spark-1.2": { "name": "Muse Spark 1.2" }
       }
     }
   }
 }
+4. Jika file sudah ada, merge provider.orvix tanpa hapus provider lain. Validasi JSON: python3 -m json.tool ~/.config/opencode/opencode.json.
+5. Suruh user restart OpenCode (config hanya dibaca saat startup), lalu /models → pilih Orvix → Muse Spark 1.2.
+
+Catatan:
+- Paket harus @ai-sdk/openai-compatible (bukan @ai-sdk/openai). Orvix pakai /v1/chat/completions.
+- Model id wajib prefix orvix/ (contoh: orvix/muse-spark-1.2). Tanpa prefix akan error no BYOK route.
+- Untuk keamanan, tawarkan pindah key ke env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." di ~/.zshrc.
+- Jika error 402 = credits habis, arahkan ke platform.orvix.id/billing.
+- Jika error accepts at most 128 tools = model OpenAI, sarankan orvix/muse-spark-1.2 atau orvix/auto yang tidak ada batas tool.
 ```
-
-<Callout type="info">
-  `@ai-sdk/openai-compatible` adalah paket yang tepat di sini. Pakai
-  `@ai-sdk/openai` hanya untuk provider yang melayani `/v1/responses` — Orvix
-  melayani `/v1/chat/completions`, dan itu yang dipahami paket compatible.
-</Callout>
-
-## 4. Restart OpenCode
-
-Tutup lalu buka lagi. Provider dibaca saat startup, jadi instance yang sedang
-jalan tidak akan melihat file baru itu.
-
-Setelah itu pilih model-nya:
-
-```
-/models
-```
-
-`Orvix → DeepSeek V4 Flash` akan muncul di daftar. Pilih, dan langsung bisa
-dipakai.
-
-## Menyimpan key di luar file config
-
-Config di atas adalah cara tercepat supaya jalan. Setelah berhasil, pindahkan
-key-nya ke environment agar tidak tersimpan di file yang mungkin Anda bagikan
-atau ter-commit:
-
-```json
-"apiKey": "{env:ORVIX_API_KEY}"
-```
-
-```bash
-# ~/.zshrc atau ~/.bashrc
-export ORVIX_API_KEY="orv-sk_live_..."
-```
-
-OpenCode membaca `{env:NAMA}` saat startup, jadi restart lagi setelah
-menambahkannya.
-
-## Menambah model lain
-
-Setiap entri di `models` menjadi satu baris di daftar pilihan. Tambahkan yang
-ingin Anda pakai bergantian:
-
-```json
-"models": {
-  "orvix/deepseek-v4-flash": {
-    "name": "DeepSeek V4 Flash",
-    "limit": { "output": 65536 }
-  },
-  "orvix/gpt-5.6-luna": {
-    "name": "GPT-5.6 Luna",
-    "limit": { "output": 128000 }
-  },
-  "orvix/kimi-k3": {
-    "name": "Kimi K3",
-    "limit": { "output": 16384 }
-  }
-}
-```
-
-Ada juga `orvix/auto`, yang memilih model per request — yang murah untuk prompt
-pendek, yang mampu untuk tool use dan konteks panjang. Tambahkan seperti entri
-lain:
-
-```json
-"orvix/auto": {
-  "name": "Orvix Auto",
-  "limit": { "output": 65536 }
-}
-```
-
-Respons menyebutkan model yang benar-benar dipakai, dan Anda ditagih dengan
-tarif model tersebut. Lihat
-[Models](/docs/id/models#orvixauto--biarkan-orvix-yang-memilih-model).
-
-Untuk melihat semua yang bisa dijangkau key Anda:
-
-```bash
-curl https://api.orvix.id/v1/models \
-  -H "Authorization: Bearer orv-sk_live_..."
-```
-
-Ketersediaan model berubah seiring waktu, jadi percayai daftar itu, bukan
-halaman ini. Lihat [Models](/docs/id/models) untuk penjelasan awalan `orvix/`
-dan bedanya dengan memakai key sendiri.
-
-## Kalau ada yang tidak beres
-
-**Provider tidak muncul di `/models`.** OpenCode hanya membaca config saat
-startup — restart dulu. Kalau masih tidak ada, berarti JSON-nya tidak valid;
-biasanya karena koma berlebih di akhir. Cek dengan:
-
-```bash
-python3 -m json.tool ~/.config/opencode/opencode.json
-```
-
-**`401 Missing Authorization header` atau `invalid API key`.** Key-nya salah,
-sudah dicabut, atau masih berupa placeholder `orv-sk_live_...`. Pastikan
-langsung:
-
-```bash
-curl https://api.orvix.id/v1/models \
-  -H "Authorization: Bearer orv-sk_live_..."
-```
-
-Kalau balasannya `200` beserta daftar model, berarti key-nya benar dan
-masalahnya ada di file config.
-
-**`no BYOK route serves model '...'`.** Model id-nya kehilangan awalan
-`orvix/`. Tanpa awalan itu, Orvix mencari key provider *milik Anda*, bukan
-melayani model terkelola — lihat [Models](/docs/id/models). Gunakan
-`orvix/deepseek-v4-flash`, bukan `deepseek-v4-flash`.
-
-**`402` atau "insufficient credits".** Orvix Credits di project itu habis. Isi
-ulang di [platform.orvix.id/billing](https://platform.orvix.id/billing).
-
-**"accepts at most 128 tools".** Model OpenAI membatasi function tools di 128,
-dan OpenCode mengaktifkan lebih dari itu begitu beberapa MCP server terpasang.
-Batas ini milik modelnya, bukan Orvix, jadi berlaku untuk semua id
-`orvix/gpt-5.6-*`.
-
-Matikan sebagian MCP server, atau pakai model tanpa batas itu —
-`orvix/deepseek-v4-flash` dan `orvix/kimi-k3` tidak punya. `orvix/auto`
-mengurusnya sendiri: ia menghitung tools di request dan hanya memilih model
-yang sanggup menerimanya.
-
-**Request lambat atau timeout.** Coba dulu request yang sama pakai `curl`.
-Kalau `curl` cepat tapi OpenCode lambat, masalahnya lokal — biasanya proxy atau
-VPN di antara Anda dan API.
-
-## Selanjutnya
-
-- [Models](/docs/id/models) — katalog lengkap, dan beda model terkelola vs key sendiri
-- [Rate limits](/docs/id/rate-limits) — batas yang berlaku untuk paket Anda
-- [Errors](/docs/id/errors) — semua bentuk error yang dikembalikan API
