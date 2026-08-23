@@ -6,5 +6,8 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: appName,
     },
+    searchToggle: {
+      enabled: false,
+    },
   };
 }
