@@ -5,19 +5,15 @@ description: Add Orvix to OpenCode in one paste — one config file, one API key
 
 # OpenCode Setup
 
-> **Prompt untuk AI:** Copy instruksi di bawah dan jalankan. User pakai model apapun (termasuk free di Zen seperti Big Pickle / DeepSeek V4 Flash) harus tetap bisa setup.
+Copy prompt di bawah ke AI apapun (bahkan model free di Zen seperti Big Pickle / DeepSeek V4 Flash) — AI akan setup Orvix otomatis.
 
----
+```txt
+Tugas: Setup Orvix di OpenCode.
 
-**Tugas:** Setup Orvix di OpenCode.
-
-**Langkah:**
-
-1. Minta API key Orvix ke user jika belum ada. Key ada di `platform.orvix.id/api-keys`, format `orv-sk_live_...`. Jika user belum punya, arahkan ke sana.
-2. Buat file `~/.config/opencode/opencode.json` (macOS/Linux) atau `%APPDATA%\opencode\opencode.json` (Windows). Buat folder jika belum ada: `mkdir -p ~/.config/opencode`.
-3. Isi dengan config ini, ganti `orv-sk_live_...` dengan key user:
-
-```json
+Langkah:
+1. Minta API key Orvix ke user jika belum ada. Key ada di platform.orvix.id/api-keys, format orv-sk_live_... Jika user belum punya, arahkan ke sana.
+2. Buat file ~/.config/opencode/opencode.json (macOS/Linux) atau %APPDATA%\opencode\opencode.json (Windows). Buat folder jika belum ada: mkdir -p ~/.config/opencode.
+3. Isi dengan config ini, ganti orv-sk_live_... dengan key user:
 {
   "$schema": "https://opencode.ai/config.json",
   "provider": {
@@ -34,14 +30,13 @@ description: Add Orvix to OpenCode in one paste — one config file, one API key
     }
   }
 }
+4. Jika file sudah ada, merge provider.orvix tanpa hapus provider lain. Validasi JSON: python3 -m json.tool ~/.config/opencode/opencode.json.
+5. Suruh user restart OpenCode (config hanya dibaca saat startup), lalu /models → pilih Orvix → Muse Spark 1.2.
+
+Catatan:
+- Paket harus @ai-sdk/openai-compatible (bukan @ai-sdk/openai). Orvix pakai /v1/chat/completions.
+- Model id wajib prefix orvix/ (contoh: orvix/muse-spark-1.2). Tanpa prefix akan error no BYOK route.
+- Untuk keamanan, tawarkan pindah key ke env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." di ~/.zshrc.
+- Jika error 402 = credits habis, arahkan ke platform.orvix.id/billing.
+- Jika error accepts at most 128 tools = model OpenAI, sarankan orvix/muse-spark-1.2 atau orvix/auto yang tidak ada batas tool.
 ```
-
-4. Jika file sudah ada, merge `provider.orvix` tanpa hapus provider lain. Validasi JSON: `python3 -m json.tool ~/.config/opencode/opencode.json`.
-5. Suruh user restart OpenCode (config hanya dibaca saat startup), lalu `/models` → pilih `Orvix → Muse Spark 1.2`.
-
-**Catatan:**
-- Paket harus `@ai-sdk/openai-compatible` (bukan `@ai-sdk/openai`). Orvix pakai `/v1/chat/completions`.
-- Model id wajib prefix `orvix/` (contoh: `orvix/muse-spark-1.2`). Tanpa prefix akan error `no BYOK route`.
-- Untuk keamanan, tawarkan pindah key ke env: `"apiKey": "{env:ORVIX_API_KEY}"` + `export ORVIX_API_KEY="..."` di `~/.zshrc`.
-- Jika error `402` = credits habis, arahkan ke `platform.orvix.id/billing`.
-- Jika error `accepts at most 128 tools` = model OpenAI, sarankan `orvix/muse-spark-1.2` atau `orvix/auto` yang tidak ada batas tool.
