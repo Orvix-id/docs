@@ -25,7 +25,18 @@ Langkah:
         "apiKey": "orv-sk_live_..."
       },
       "models": {
-        "orvix/muse-spark-1.2": { "name": "Muse Spark 1.2" }
+        "orvix/muse-spark-1.2": {
+          "name": "Muse Spark 1.2",
+          "id": "orvix/muse-spark-1.2",
+          "limit": {
+            "context": 1000000,
+            "output": 32000
+          },
+          "modalities": {
+            "input": ["text", "image"],
+            "output": ["text"]
+          }
+        }
       }
     }
   }
@@ -36,6 +47,7 @@ Langkah:
 Catatan:
 - Paket harus @ai-sdk/openai-compatible (bukan @ai-sdk/openai). Orvix pakai /v1/chat/completions.
 - Model id wajib prefix orvix/ (contoh: orvix/muse-spark-1.2). Tanpa prefix akan error no BYOK route.
+- modalities input ["text","image"] mengaktifkan pemahaman gambar — tanpa itu clipboard image akan ditolak.
 - Untuk keamanan, tawarkan pindah key ke env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." di ~/.zshrc.
 - Jika error 402 = credits habis, arahkan ke platform.orvix.id/billing.
 - Jika error accepts at most 128 tools = model OpenAI, sarankan orvix/muse-spark-1.2 atau orvix/auto yang tidak ada batas tool.
