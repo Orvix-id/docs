@@ -9,7 +9,7 @@ description: Daftar dan identifikasi model yang tersedia melalui Orvix AI router
 
 `GET /v1/models`
 
-Mengembalikan semua model yang tersedia untuk project Anda berdasarkan provider yang dikonfigurasikan.
+Mengembalikan semua model yang tersedia untuk project Anda berdasarkan provider yang dikonfigurasikan. Key Coding Plan tidak boleh memakai daftar ini — lihat [Model Coding Plan](#model-coding-plan).
 
 ### Request
 
@@ -45,6 +45,34 @@ curl https://api.orvix.id/v1/models \
   ]
 }
 ```
+
+## Model Coding Plan
+
+`GET /coding/models`
+
+Membutuhkan scope `coding:invoke`. Mengembalikan allowlist yang sama dengan yang diterima `POST /coding/completions` (model terkelola `coding_enabled`), bukan katalog `/v1`. Klien cache-harness (Kamui, OpenCode) harus memilih model dari daftar ini.
+
+```bash
+curl https://api.orvix.id/coding/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "orvix/grok-4.6",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "orvix",
+      "available": true
+    }
+  ]
+}
+```
+
+Katalog kosong adalah `503` dengan `"type": "server_error"` — bentuk yang sama dengan `POST /coding/completions` ketika Coding belum dikonfigurasikan di deployment. Key yang hanya punya `ai:invoke` mendapat `401`.
 
 ## Format ID model
 

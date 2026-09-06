@@ -21,7 +21,7 @@ Buat dan kelola API key dari [Orvix Platform](https://platform.orvix.id/api-keys
 
 ## Scope yang dibutuhkan
 
-Untuk memanggil AI router, key harus memiliki scope `ai:invoke`. Key tanpa scope ini akan mendapat error `401`.
+Untuk memanggil AI router di `/v1`, key harus memiliki scope `ai:invoke`. Rute Coding Plan (`GET /coding/models`, `POST /coding/completions`) membutuhkan `coding:invoke`. Key tanpa scope yang sesuai akan mendapat error `401`.
 
 ## Response error
 

@@ -9,7 +9,7 @@ description: List and identify models available through the Orvix AI router.
 
 `GET /v1/models`
 
-Returns all models available to your project based on your configured providers.
+Returns all models available to your project based on your configured providers. A Coding Plan key must not use this list — see [Coding Plan models](#coding-plan-models).
 
 ### Request
 
@@ -45,6 +45,34 @@ curl https://api.orvix.id/v1/models \
   ]
 }
 ```
+
+## Coding Plan models
+
+`GET /coding/models`
+
+Requires the `coding:invoke` scope. Returns the same allowlist that `POST /coding/completions` admits (`coding_enabled` managed models), not the `/v1` catalogue. Cache-harness clients (Kamui, OpenCode) should pick a model from this list.
+
+```bash
+curl https://api.orvix.id/coding/models \
+  -H "Authorization: Bearer orv-sk_live_..."
+```
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "orvix/grok-4.6",
+      "object": "model",
+      "created": 1720000000,
+      "owned_by": "orvix",
+      "available": true
+    }
+  ]
+}
+```
+
+An empty catalogue is `503` with `"type": "server_error"` — the same shape as `POST /coding/completions` when Coding is not configured on the deployment. A key that only has `ai:invoke` is `401`.
 
 ## Model ID format
 
