@@ -9,6 +9,7 @@
     "authentication",
     "models",
     "chat-completions",
+    "image-generations",
     "streaming",
     "errors",
     "rate-limits",
@@ -19,6 +20,7 @@
     "id/authentication",
     "id/models",
     "id/chat-completions",
+    "id/image-generations",
     "id/streaming",
     "id/errors",
     "id/rate-limits"

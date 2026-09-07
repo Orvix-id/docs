@@ -22,7 +22,7 @@ AI router mengembalikan error dalam format OpenAI:
 |---|---|---|
 | 400 | `invalid_request_error` | Request salah format, model tidak dikenal, prefix `orvix/` tidak valid |
 | 401 | `authentication_error` | API key tidak valid, kedaluwarsa, atau dicabut |
-| 402 | `insufficient_credits` | Orvix Credits tidak cukup untuk model terkelola |
+| 402 | `insufficient_credits` | Orvix Credits (chat) atau Image Credits (`/v1/images/generations`) tidak cukup |
 | 403 | `permission_error` | API key tidak diizinkan untuk sumber pendanaan yang diminta |
 | 429 | `rate_limit_error` | Rate limit per-key atau limit belanja bulanan terlampaui |
 | 502 | `server_error` | Semua rute provider upstream gagal |

@@ -1,0 +1,86 @@
+---
+title: Image Generations
+description: Generate images with prepaid Image Credits via POST /v1/images/generations.
+---
+
+# Image Generations
+
+`POST /v1/images/generations`
+
+OpenAI-shaped image generation. Debit is **prepaid Image Credits** (`PlanSpendScope::Image`) — never Ember tokens, never wallet IDR, never Coding / One.
+
+Buy **Image Credits 100** on the platform Plans page (100 credits, 365 days). Each catalogue model publishes `capabilities.imageCreditCost`.
+
+## Catalogue (ship-5)
+
+| Model | Notes |
+|---|---|
+| `flux-2-pro` | Black Forest Labs |
+| `qwen-image-3.0` | Qwen (not Pro) |
+| `seedream-5.0-pro` | ByteDance |
+| `gpt-image-2` | OpenAI |
+| `gemini-3-pro-image` | Google |
+
+Midjourney, Grok, and Wan are not in this catalogue.
+
+Prefix `orvix/` is accepted (`orvix/flux-2-pro`).
+
+## Request body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `model` | string | Yes | Catalogue slug, with or without `orvix/` |
+| `prompt` | string | Yes | Non-empty prompt |
+| `n` | integer | No | `1`–`4` (default `1`). Seedream 5.0 Pro is always 1. |
+| `size` | string | No | Pixel size. GPT/Flux: `1024x1024`. Seedream: `2048x2048`. Qwen: `1024*1024` (`x` is rewritten). Gemini: `1K` / `2K` / `4K`. |
+| `quality` | string | No | Passed through when the upstream accepts it |
+| `response_format` | string | No | `url` or `b64_json` when the upstream supports it |
+
+Extra fields are forwarded to the upstream adapter.
+
+### Example
+
+```json
+{
+  "model": "orvix/flux-2-pro",
+  "prompt": "A red bicycle on a wet street at dusk",
+  "n": 1
+}
+```
+
+## Response
+
+```json
+{
+  "created": 1757200000,
+  "model": "orvix/flux-2-pro",
+  "data": [
+    { "url": "https://is3.cloudhost.id/orvix/orvix-images/flux-2-pro-0-….png" }
+  ]
+}
+```
+
+When S3 persist is configured on the API, `data[].url` points at the stored object. If persist is off or a put fails, the upstream `url` or `b64_json` is returned unchanged. Credits are consumed **before** persist — a storage failure does not refund.
+
+## cURL
+
+```bash
+curl https://api.orvix.id/v1/images/generations \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "flux-2-pro",
+    "prompt": "A red bicycle on a wet street at dusk"
+  }'
+```
+
+## Errors specific to this surface
+
+| HTTP | `type` | When |
+|---|---|---|
+| 400 | `invalid_request_error` | Empty prompt, `n` outside 1–4, unknown / non-image model |
+| 402 | `insufficient_credits` | No remaining Image Credits (Ember / Coding / wallet will not pay) |
+| 429 | `rate_limit_error` | Soft RPM on models that publish a low card (e.g. Qwen) |
+| 502 | `server_error` | All image routes failed |
+
+Try it in the platform [Images playground](https://platform.orvix.id/images).

@@ -1,0 +1,86 @@
+---
+title: Image Generations
+description: Generate gambar dengan Image Credits prabayar lewat POST /v1/images/generations.
+---
+
+# Image Generations
+
+`POST /v1/images/generations`
+
+Generate gambar berformat OpenAI. Debit = **Image Credits prabayar** (`PlanSpendScope::Image`) — bukan Ember token, bukan saldo IDR, bukan Coding / One.
+
+Beli **Image Credits 100** di halaman Plans (100 kredit, 365 hari). Setiap model di katalog memuat `capabilities.imageCreditCost`.
+
+## Katalog (ship-5)
+
+| Model | Catatan |
+|---|---|
+| `flux-2-pro` | Black Forest Labs |
+| `qwen-image-3.0` | Qwen (bukan Pro) |
+| `seedream-5.0-pro` | ByteDance |
+| `gpt-image-2` | OpenAI |
+| `gemini-3-pro-image` | Google |
+
+Midjourney, Grok, dan Wan tidak ada di katalog ini.
+
+Prefix `orvix/` diterima (`orvix/flux-2-pro`).
+
+## Request body
+
+| Field | Tipe | Wajib | Deskripsi |
+|---|---|---|---|
+| `model` | string | Ya | Slug katalog, dengan atau tanpa `orvix/` |
+| `prompt` | string | Ya | Prompt tidak boleh kosong |
+| `n` | integer | Tidak | `1`–`4` (default `1`). Seedream 5.0 Pro selalu 1. |
+| `size` | string | Tidak | Ukuran piksel. GPT/Flux: `1024x1024`. Seedream: `2048x2048`. Qwen: `1024*1024` (`x` diubah otomatis). Gemini: `1K` / `2K` / `4K`. |
+| `quality` | string | Tidak | Diteruskan jika upstream menerima |
+| `response_format` | string | Tidak | `url` atau `b64_json` jika upstream mendukung |
+
+Field tambahan diteruskan ke adapter upstream.
+
+### Contoh
+
+```json
+{
+  "model": "orvix/flux-2-pro",
+  "prompt": "Sepeda merah di jalan basah saat senja",
+  "n": 1
+}
+```
+
+## Respons
+
+```json
+{
+  "created": 1757200000,
+  "model": "orvix/flux-2-pro",
+  "data": [
+    { "url": "https://is3.cloudhost.id/orvix/orvix-images/flux-2-pro-0-….png" }
+  ]
+}
+```
+
+Jika persist S3 aktif di API, `data[].url` mengarah ke objek tersimpan. Jika persist mati atau put gagal, `url` / `b64_json` upstream dikembalikan apa adanya. Kredit didebit **sebelum** persist — gagal simpan tidak refund.
+
+## cURL
+
+```bash
+curl https://api.orvix.id/v1/images/generations \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "flux-2-pro",
+    "prompt": "Sepeda merah di jalan basah saat senja"
+  }'
+```
+
+## Error khusus permukaan ini
+
+| HTTP | `type` | Kapan |
+|---|---|---|
+| 400 | `invalid_request_error` | Prompt kosong, `n` di luar 1–4, model bukan image |
+| 402 | `insufficient_credits` | Image Credits habis (Ember / Coding / dompet tidak membayar) |
+| 429 | `rate_limit_error` | Soft RPM pada model yang mempublikasikan kartu rendah (mis. Qwen) |
+| 502 | `server_error` | Semua rute image gagal |
+
+Coba di [playground Images](https://platform.orvix.id/images).

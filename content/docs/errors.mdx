@@ -22,7 +22,7 @@ The AI router returns errors in the OpenAI error format:
 |---|---|---|
 | 400 | `invalid_request_error` | Malformed request, unknown model, invalid `orvix/` prefix |
 | 401 | `authentication_error` | Invalid, expired, or revoked API key |
-| 402 | `insufficient_credits` | Not enough Orvix Credits for managed models |
+| 402 | `insufficient_credits` | Not enough Orvix Credits (chat) or Image Credits (`/v1/images/generations`) |
 | 403 | `permission_error` | API key not allowed for the requested funding source |
 | 429 | `rate_limit_error` | Per-key rate limit or monthly spend limit exceeded |
 | 502 | `server_error` | All upstream provider routes failed |
