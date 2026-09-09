@@ -21,7 +21,7 @@ Create and manage API keys from the [Orvix Platform](https://platform.orvix.id/a
 
 ## Required scope
 
-To call the AI router at `/v1`, a key must have the `ai:invoke` scope. Coding Plan routes (`GET /coding/models`, `POST /coding/completions`) require `coding:invoke`. Keys without the matching scope receive a `401` error.
+To call the AI router at `/v1`, a key must have the `ai:invoke` scope. Coding Plan routes (`GET /coding/models`, `POST /coding/completions`, `GET /coding/v1/models`, `POST /coding/v1/chat/completions`) require `coding:invoke`. Keys without the matching scope receive a `401` error.
 
 ## Error responses
 

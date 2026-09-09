@@ -48,9 +48,10 @@ curl https://api.orvix.id/v1/models \
 
 ## Coding Plan models
 
-`GET /coding/models`
+`GET /coding/models`  
+OpenAI-compatible alias: `GET /coding/v1/models`
 
-Requires the `coding:invoke` scope. Returns the same allowlist that `POST /coding/completions` admits (`coding_enabled` managed models), not the `/v1` catalogue. Cache-harness clients (Kamui, OpenCode) should pick a model from this list.
+Requires the `coding:invoke` scope. Returns the same allowlist that `POST /coding/completions` and `POST /coding/v1/chat/completions` admit (`coding_enabled` managed models), not the `/v1` catalogue. Cache-harness clients (Kamui) and OpenAI-compatible Coding clients (OpenCode with `baseURL` `https://api.orvix.id/coding/v1`) should pick a model from this list.
 
 ```bash
 curl https://api.orvix.id/coding/models \
@@ -72,7 +73,7 @@ curl https://api.orvix.id/coding/models \
 }
 ```
 
-An empty catalogue is `503` with `"type": "server_error"` — the same shape as `POST /coding/completions` when Coding is not configured on the deployment. A key that only has `ai:invoke` is `401`.
+An empty catalogue is `503` with `"type": "server_error"` — the same shape as `POST /coding/completions` and `POST /coding/v1/chat/completions` when Coding is not configured on the deployment. A key that only has `ai:invoke` is `401`.
 
 ## Model ID format
 

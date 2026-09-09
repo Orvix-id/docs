@@ -5,11 +5,10 @@ description: Pasang Orvix di OpenCode sekali paste — satu file config, satu AP
 
 # Setup OpenCode
 
-> **Catatan endpoint:** endpoint native Orvix Coding Plan adalah `POST /coding/completions`,
-> sedangkan provider OpenAI-compatible OpenCode memanggil `POST /v1/chat/completions`. Konfigurasi
-> di bawah untuk rute Orvix umum. Untuk endpoint Coding Plan native, gunakan
-> [Kamui](https://github.com/ManifoldSystems/kamui), yang menangani `/coding/models`,
-> `/coding/completions`, dan `session_id` sticky yang diwajibkan.
+> **Catatan endpoint:** API Orvix umum adalah `https://api.orvix.id/v1`. Rute native Orvix Coding
+> Plan tetap `POST /coding/completions` (`session_id` wajib; gunakan [Kamui](https://github.com/ManifoldSystems/kamui)).
+> Klien OpenAI-compatible Coding Plan yang menambahkan `/chat/completions` harus memakai
+> `https://api.orvix.id/coding/v1`, bukan `/v1`.
 
 Copy prompt di bawah ke AI apapun (bahkan model free di Zen seperti Big Pickle / DeepSeek V4 Flash) — AI akan setup Orvix otomatis.
 
@@ -51,10 +50,10 @@ Langkah:
 5. Suruh user restart OpenCode (config hanya dibaca saat startup), lalu /models → pilih Orvix → Muse Spark 1.2.
 
 Catatan:
-- Paket harus @ai-sdk/openai-compatible (bukan @ai-sdk/openai). OpenCode memakai `/v1/chat/completions`.
-- OpenCode saat ini tidak menyediakan field konfigurasi untuk path Orvix `/coding/completions` yang
-  terpisah atau kontrak `session_id` yang diwajibkan. Untuk rute Coding Plan native, install Kamui
-  dari [kamui-web.vercel.app](https://kamui-web.vercel.app) lalu pilih **Orvix Coding** saat setup.
+- Paket harus @ai-sdk/openai-compatible (bukan @ai-sdk/openai). OpenCode menambahkan `/chat/completions` ke baseURL.
+- API Orvix umum: `"baseURL": "https://api.orvix.id/v1"` dengan key `ai:invoke`.
+- Coding Plan: `"baseURL": "https://api.orvix.id/coding/v1"` dengan key `coding:invoke` dan Coding Plan aktif. Itu memanggil `POST /coding/v1/chat/completions` dan `GET /coding/v1/models`. `POST /coding/completions` native tetap untuk Kamui dan masih mewajibkan `session_id`.
+- OpenCode tidak mengirim `session_id`. Request compatibility tetap ditagih sebagai Coding Plan, tetapi cache affinity dimatikan kecuali klien menyertakan `session_id`. Untuk rute sticky native, install Kamui dari [kamui-web.vercel.app](https://kamui-web.vercel.app) lalu pilih **Orvix Coding**.
 - Model id wajib prefix orvix/ (contoh: orvix/muse-spark-1.2). Tanpa prefix akan error no BYOK route.
 - modalities input ["text","image"] mengaktifkan pemahaman gambar — tanpa itu clipboard image akan ditolak.
 - Untuk keamanan, tawarkan pindah key ke env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." di ~/.zshrc.

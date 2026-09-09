@@ -48,9 +48,10 @@ curl https://api.orvix.id/v1/models \
 
 ## Model Coding Plan
 
-`GET /coding/models`
+`GET /coding/models`  
+Alias OpenAI-compatible: `GET /coding/v1/models`
 
-Membutuhkan scope `coding:invoke`. Mengembalikan allowlist yang sama dengan yang diterima `POST /coding/completions` (model terkelola `coding_enabled`), bukan katalog `/v1`. Klien cache-harness (Kamui, OpenCode) harus memilih model dari daftar ini.
+Membutuhkan scope `coding:invoke`. Mengembalikan allowlist yang sama dengan yang diterima `POST /coding/completions` dan `POST /coding/v1/chat/completions` (model terkelola `coding_enabled`), bukan katalog `/v1`. Klien cache-harness (Kamui) dan klien Coding OpenAI-compatible (OpenCode dengan `baseURL` `https://api.orvix.id/coding/v1`) harus memilih model dari daftar ini.
 
 ```bash
 curl https://api.orvix.id/coding/models \
@@ -72,7 +73,7 @@ curl https://api.orvix.id/coding/models \
 }
 ```
 
-Katalog kosong adalah `503` dengan `"type": "server_error"` — bentuk yang sama dengan `POST /coding/completions` ketika Coding belum dikonfigurasikan di deployment. Key yang hanya punya `ai:invoke` mendapat `401`.
+Katalog kosong adalah `503` dengan `"type": "server_error"` — bentuk yang sama dengan `POST /coding/completions` dan `POST /coding/v1/chat/completions` ketika Coding belum dikonfigurasikan di deployment. Key yang hanya punya `ai:invoke` mendapat `401`.
 
 ## Format ID model
 
