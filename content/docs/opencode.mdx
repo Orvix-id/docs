@@ -5,6 +5,11 @@ description: Add Orvix to OpenCode in one paste — one config file, one API key
 
 # OpenCode Setup
 
+> **Endpoint note:** Orvix Coding Plan's native endpoint is `POST /coding/completions`, while
+> OpenCode's OpenAI-compatible provider calls `POST /v1/chat/completions`. The configuration below
+> is for the general Orvix API route. For the native Coding Plan endpoint, use [Kamui](https://github.com/ManifoldSystems/kamui),
+> which handles `/coding/models`, `/coding/completions`, and the required sticky `session_id`.
+
 Copy the prompt below to any AI (even free Zen models like Big Pickle / DeepSeek V4 Flash) — the AI will set up Orvix automatically.
 
 ```txt
@@ -45,7 +50,10 @@ Steps:
 5. Tell the user to restart OpenCode (config is only read at startup), then /models → select Orvix → Muse Spark 1.2.
 
 Notes:
-- Package must be @ai-sdk/openai-compatible (not @ai-sdk/openai). Orvix uses /v1/chat/completions.
+- Package must be @ai-sdk/openai-compatible (not @ai-sdk/openai). OpenCode uses `/v1/chat/completions`.
+- It does not currently expose a configuration field for Orvix's separate `/coding/completions` path
+  or its required `session_id` contract. To use the native Coding Plan route, install Kamui from
+  [kamui-web.vercel.app](https://kamui-web.vercel.app) and choose **Orvix Coding** during setup.
 - Model id must have orvix/ prefix (e.g., orvix/muse-spark-1.2). Without it you'll get no BYOK route error.
 - modalities input ["text","image"] enables image understanding — without it clipboard images are rejected.
 - For security, offer to move the key to env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." in ~/.zshrc.
