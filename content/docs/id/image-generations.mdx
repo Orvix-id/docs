@@ -33,19 +33,23 @@ Prefix `orvix/` diterima (`orvix/flux-2-pro`).
 |---|---|---|---|
 | `model` | string | Ya | Slug katalog, dengan atau tanpa `orvix/` |
 | `prompt` | string | Ya | Prompt tidak boleh kosong |
-| `n` | integer | Tidak | `1`–`4` (default `1`). Seedream 5.0 Pro selalu 1. |
+| `n` | integer | Tidak | `1`–`4` (default `1`). Gemini 3 Pro Image dan Seedream 5.0 Pro selalu 1. |
 | `size` | string | Tidak | Ukuran piksel. GPT/Flux: `1024x1024`. Seedream: `2048x2048`. Qwen: `1024*1024` (`x` diubah otomatis). Gemini: `1K` / `2K` / `4K`. |
 | `quality` | string | Tidak | Diteruskan jika upstream menerima |
 | `response_format` | string | Tidak | `url` atau `b64_json` jika upstream mendukung |
 
 Field tambahan diteruskan ke adapter upstream.
 
+Untuk `gemini-3-pro-image`, kirim `aspect_ratio` (misalnya `16:9`) sebagai field tambahan. `size` menerima `1K`, `2K`, atau `4K`.
+
 ### Contoh
 
 ```json
 {
-  "model": "orvix/flux-2-pro",
-  "prompt": "Sepeda merah di jalan basah saat senja",
+  "model": "orvix/gemini-3-pro-image",
+  "prompt": "Astronaut menunggang kuda di Mars, cahaya sinematik",
+  "size": "1K",
+  "aspect_ratio": "16:9",
   "n": 1
 }
 ```
@@ -62,7 +66,7 @@ Field tambahan diteruskan ke adapter upstream.
 }
 ```
 
-Jika persist S3 aktif di API, `data[].url` mengarah ke objek tersimpan. Jika persist mati atau put gagal, `url` / `b64_json` upstream dikembalikan apa adanya. Kredit didebit **sebelum** persist — gagal simpan tidak refund.
+API menyimpan gambar upstream ke object storage dan mengembalikan `data[].url`; base64 upstream tidak dikembalikan ke klien. Kredit baru didebit setelah penyimpanan berhasil.
 
 ## cURL
 
@@ -71,8 +75,10 @@ curl https://api.orvix.id/v1/images/generations \
   -H "Authorization: Bearer orv-sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "flux-2-pro",
-    "prompt": "Sepeda merah di jalan basah saat senja"
+    "model": "gemini-3-pro-image",
+    "prompt": "Astronaut menunggang kuda di Mars, cahaya sinematik",
+    "size": "1K",
+    "aspect_ratio": "16:9"
   }'
 ```
 

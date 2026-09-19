@@ -33,19 +33,23 @@ Prefix `orvix/` is accepted (`orvix/flux-2-pro`).
 |---|---|---|---|
 | `model` | string | Yes | Catalogue slug, with or without `orvix/` |
 | `prompt` | string | Yes | Non-empty prompt |
-| `n` | integer | No | `1`–`4` (default `1`). Seedream 5.0 Pro is always 1. |
+| `n` | integer | No | `1`–`4` (default `1`). Gemini 3 Pro Image and Seedream 5.0 Pro are always 1. |
 | `size` | string | No | Pixel size. GPT/Flux: `1024x1024`. Seedream: `2048x2048`. Qwen: `1024*1024` (`x` is rewritten). Gemini: `1K` / `2K` / `4K`. |
 | `quality` | string | No | Passed through when the upstream accepts it |
 | `response_format` | string | No | `url` or `b64_json` when the upstream supports it |
 
 Extra fields are forwarded to the upstream adapter.
 
+For `gemini-3-pro-image`, pass `aspect_ratio` (for example `16:9`) as an extra field. `size` accepts `1K`, `2K`, or `4K`.
+
 ### Example
 
 ```json
 {
-  "model": "orvix/flux-2-pro",
-  "prompt": "A red bicycle on a wet street at dusk",
+  "model": "orvix/gemini-3-pro-image",
+  "prompt": "An astronaut riding a horse on Mars, cinematic light",
+  "size": "1K",
+  "aspect_ratio": "16:9",
   "n": 1
 }
 ```
@@ -62,7 +66,7 @@ Extra fields are forwarded to the upstream adapter.
 }
 ```
 
-When S3 persist is configured on the API, `data[].url` points at the stored object. If persist is off or a put fails, the upstream `url` or `b64_json` is returned unchanged. Credits are consumed **before** persist — a storage failure does not refund.
+The API persists the upstream image to object storage and returns `data[].url`; upstream base64 is not returned to the client. Credits are consumed only after persistence succeeds.
 
 ## cURL
 
@@ -71,8 +75,10 @@ curl https://api.orvix.id/v1/images/generations \
   -H "Authorization: Bearer orv-sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "flux-2-pro",
-    "prompt": "A red bicycle on a wet street at dusk"
+    "model": "gemini-3-pro-image",
+    "prompt": "An astronaut riding a horse on Mars, cinematic light",
+    "size": "1K",
+    "aspect_ratio": "16:9"
   }'
 ```
 
