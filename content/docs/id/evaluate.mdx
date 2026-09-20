@@ -19,9 +19,11 @@ Sejauh ini satu evaluator yang live:
 
 | Model | Upstream | Catatan |
 |---|---|---|
-| `orvix/jev` | TypeSafe Jev (`typesafe-ai/jev`) | Tarif katalog $0.05 / 1M input; evaluate saat ini masih free |
+| `orvix/jev` | TypeSafe Jev (`typesafe-ai/jev`) | $0.05 / 1M input. Dibayar unit paket chat (Flame, Ember, Inferno, Blaze) dulu, lalu Orvix Credits. Bisa dipakai akun free dan Pro. |
 
 Prefix `orvix/` opsional (`jev` juga jalan). `capabilities.evaluation` di katalog menandai model evaluator. Mereka tidak muncul di playground chat atau `orvix/auto`.
+
+Billing sama dengan chat terkelola: pembelian Flame / Ember / Inferno / Blaze yang aktif dipakai dulu; kalau tidak ada, Orvix Credits. Coding Plan dan Image Credits tidak bisa membayar. Akun free dan Pro boleh memanggil (`min_tier` kosong).
 
 ## Request body
 

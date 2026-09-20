@@ -19,9 +19,11 @@ So far one evaluator is live:
 
 | Model | Upstream | Notes |
 |---|---|---|
-| `orvix/jev` | TypeSafe Jev (`typesafe-ai/jev`) | Catalogue rate $0.05 / 1M input; evaluate currently settles free |
+| `orvix/jev` | TypeSafe Jev (`typesafe-ai/jev`) | $0.05 / 1M input. Paid from chat-plan units (Flame, Ember, Inferno, Blaze) first, then Orvix Credits. Open to free and Pro. |
 
 Prefix `orvix/` is optional (`jev` works). `capabilities.evaluation` on the catalogue marks evaluator models. They do not appear in the chat playground or `orvix/auto`.
+
+Billing matches managed chat: an active Flame / Ember / Inferno / Blaze purchase spends first; otherwise Orvix Credits. Coding Plan and Image Credits cannot pay. Free and Pro accounts may call it (`min_tier` is unset).
 
 ## Request body
 
