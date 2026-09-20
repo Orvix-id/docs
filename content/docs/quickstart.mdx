@@ -79,4 +79,24 @@ curl https://api.orvix.id/v1/models \
   -H "Authorization: Bearer orv-sk_live_..."
 ```
 
+## 5. Score or classify (not chat)
+
+`orvix/jev` is an evaluator. Call [`POST /v1/evaluate`](/evaluate), not chat completions.
+
+```bash
+curl https://api.orvix.id/v1/evaluate \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/jev",
+    "state": "I was charged twice for my subscription.",
+    "questions": {
+      "refund": {
+        "type": "noul",
+        "instructions": "Is the customer asking for money back?"
+      }
+    }
+  }'
+```
+
 That's it — you're routing AI requests through Orvix.

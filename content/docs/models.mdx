@@ -120,6 +120,9 @@ Because the model ID is `gpt-4.1-mini` (no `orvix/` prefix), Orvix looks up your
 
 Models prefixed with `orvix/` are **fully managed by Orvix**. You don't need your own provider keys — Orvix owns and maintains the underlying provider accounts and bills you through **Orvix Credits**.
 
+`orvix/jev` is an **evaluator**, not a chat model. Call it with
+[`POST /v1/evaluate`](/evaluate). Chat completions refuse it.
+
 `orvix/grok4.6:free` provides Grok 4.6 through the standard `/v1` API at no
 credit or plan-unit cost. It is separate from the paid `orvix/grok-4.6` model
 and is not included in the Coding endpoint. Free admission limits are 12 RPM

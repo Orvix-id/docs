@@ -10,6 +10,7 @@
     "models",
     "chat-completions",
     "image-generations",
+    "evaluate",
     "streaming",
     "errors",
     "rate-limits",
@@ -21,6 +22,7 @@
     "id/models",
     "id/chat-completions",
     "id/image-generations",
+    "id/evaluate",
     "id/streaming",
     "id/errors",
     "id/rate-limits"

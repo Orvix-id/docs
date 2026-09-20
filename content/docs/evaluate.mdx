@@ -1,0 +1,132 @@
+---
+title: Evaluator Models
+description: Score, classify, and route with TypeSafe Jev via POST /v1/evaluate. Not chat.
+---
+
+# Evaluator Models
+
+`POST /v1/evaluate`
+
+Typed questions against one shared **state**. The model returns structured answers — noul, choice, score — not generated text.
+
+This is **not** `/v1/chat/completions`. Sending `orvix/jev` to chat is refused. Use this endpoint, or the platform [Evaluate](https://platform.orvix.id/evaluate) page.
+
+The request and response follow **TypeSafe native** (System One). `boolean` is accepted as an alias of `noul`.
+
+## Catalogue
+
+So far one evaluator is live:
+
+| Model | Upstream | Notes |
+|---|---|---|
+| `orvix/jev` | TypeSafe Jev (`typesafe-ai/jev`) | Catalogue rate $0.05 / 1M input; evaluate currently settles free |
+
+Prefix `orvix/` is optional (`jev` works). `capabilities.evaluation` on the catalogue marks evaluator models. They do not appear in the chat playground or `orvix/auto`.
+
+## Request body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `model` | string | No | Catalogue slug. Defaults to `orvix/jev`. |
+| `state` | string, object, or array | Yes | Shared context every question is scored against. |
+| `questions` | object | Yes | Nonempty map of typed questions. |
+
+### Question types
+
+| `type` | Returns | Criteria |
+|---|---|---|
+| `noul` | Probability 0–1 (`noul`). Alias: `boolean`. | Optional `{ true, false }` |
+| `choice` | One named option plus probabilities | Required object of option → description |
+| `score` | Interpolated score plus rung probabilities | Required array of at least two labels, low to high |
+
+Each question also needs `instructions`. Several questions of mixed types share one `state` and are answered in one request.
+
+### Example
+
+```json
+{
+  "model": "orvix/jev",
+  "state": "I was charged twice for my subscription.",
+  "questions": {
+    "refund": {
+      "type": "noul",
+      "instructions": "Is the customer asking for money back?"
+    },
+    "department": {
+      "type": "choice",
+      "instructions": "Which team should handle this?",
+      "criteria": {
+        "billing": "Charges, invoices, refunds",
+        "technical": "Bugs, outages, integrations"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this ticket?",
+      "criteria": ["low", "medium", "high"]
+    }
+  }
+}
+```
+
+`boolean` is rewritten to `noul` before the upstream call:
+
+```json
+{ "type": "boolean", "instructions": "Was a refund issued?" }
+```
+
+## Response
+
+```json
+{
+  "model": "orvix/jev",
+  "answers": {
+    "refund": { "type": "noul", "noul": 0.98 },
+    "department": {
+      "type": "choice",
+      "choice": "billing",
+      "confidence": 0.9,
+      "probabilities": { "billing": 0.97, "technical": 0.03 }
+    },
+    "urgency": {
+      "type": "score",
+      "score": 1.84,
+      "legend": { "0": "low", "1": "medium", "2": "high" },
+      "probabilities": { "0": 0, "1": 0.16, "2": 0.84 }
+    }
+  },
+  "usage": { "input_tokens": 275, "output_tokens": 20 }
+}
+```
+
+Field names follow TypeSafe (`noul`, `input_tokens`). Some gateways also emit `probability` / `inputTokens`; Orvix passes the upstream body through.
+
+## cURL
+
+```bash
+curl https://api.orvix.id/v1/evaluate \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/jev",
+    "state": "I was charged twice for my subscription.",
+    "questions": {
+      "refund": {
+        "type": "noul",
+        "instructions": "Is the customer asking for money back?"
+      }
+    }
+  }'
+```
+
+## Errors specific to this surface
+
+| HTTP | `type` | When |
+|---|---|---|
+| 400 | `invalid_request_error` | Empty questions, unknown type, missing instructions / criteria |
+| 400 | `invalid_request_error` | Calling an evaluator on `/v1/chat/completions` |
+| 404 | `invalid_request_error` | Model is not an evaluator |
+| 503 | `server_error` | No healthy evaluator route |
+| 502 | `upstream_error` | All evaluator routes failed |
+
+Try it in the platform [Evaluate](https://platform.orvix.id/evaluate) page (Quality, Sentiment, Spam, Moderation presets).

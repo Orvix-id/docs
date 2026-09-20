@@ -79,4 +79,24 @@ curl https://api.orvix.id/v1/models \
   -H "Authorization: Bearer orv-sk_live_..."
 ```
 
+## 5. Skor atau klasifikasi (bukan chat)
+
+`orvix/jev` adalah evaluator. Panggil [`POST /v1/evaluate`](/id/evaluate), bukan chat completions.
+
+```bash
+curl https://api.orvix.id/v1/evaluate \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/jev",
+    "state": "Saya ditagih dua kali untuk langganan.",
+    "questions": {
+      "refund": {
+        "type": "noul",
+        "instructions": "Apakah pelanggan minta uang kembali?"
+      }
+    }
+  }'
+```
+
 Selesai — Anda sudah merutekan request AI melalui Orvix.

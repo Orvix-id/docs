@@ -20,13 +20,14 @@ AI router mengembalikan error dalam format OpenAI:
 
 | HTTP status | `type` | Deskripsi |
 |---|---|---|
-| 400 | `invalid_request_error` | Request salah format, model tidak dikenal, prefix `orvix/` tidak valid |
+| 400 | `invalid_request_error` | Request salah format, model tidak dikenal, prefix `orvix/` tidak valid, evaluator di chat, questions evaluate kosong |
+| 404 | `invalid_request_error` | Model bukan evaluator (`POST /v1/evaluate`) |
 | 401 | `authentication_error` | API key tidak valid, kedaluwarsa, atau dicabut |
 | 402 | `insufficient_credits` | Orvix Credits (chat) atau Image Credits (`/v1/images/generations`) tidak cukup |
 | 403 | `permission_error` | API key tidak diizinkan untuk sumber pendanaan yang diminta |
 | 429 | `rate_limit_error` | Rate limit per-key atau limit belanja bulanan terlampaui |
 | 502 | `server_error` | Semua rute provider upstream gagal |
-| 503 | `server_error` | AI router belum dikonfigurasikan, atau katalog Coding Plan kosong |
+| 503 | `server_error` | AI router belum dikonfigurasikan, katalog Coding Plan kosong, atau tidak ada rute evaluator yang sehat |
 | 500 | `server_error` | Internal server error |
 
 ## Contoh error umum

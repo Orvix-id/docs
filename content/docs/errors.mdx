@@ -20,13 +20,14 @@ The AI router returns errors in the OpenAI error format:
 
 | HTTP status | `type` | Description |
 |---|---|---|
-| 400 | `invalid_request_error` | Malformed request, unknown model, invalid `orvix/` prefix |
+| 400 | `invalid_request_error` | Malformed request, unknown model, invalid `orvix/` prefix, evaluator on chat, empty evaluate questions |
+| 404 | `invalid_request_error` | Model is not an evaluator (`POST /v1/evaluate`) |
 | 401 | `authentication_error` | Invalid, expired, or revoked API key |
 | 402 | `insufficient_credits` | Not enough Orvix Credits (chat) or Image Credits (`/v1/images/generations`) |
 | 403 | `permission_error` | API key not allowed for the requested funding source |
 | 429 | `rate_limit_error` | Per-key rate limit or monthly spend limit exceeded |
 | 502 | `server_error` | All upstream provider routes failed |
-| 503 | `server_error` | AI router not configured, or Coding Plan catalogue empty |
+| 503 | `server_error` | AI router not configured, Coding Plan catalogue empty, or no healthy evaluator route |
 | 500 | `server_error` | Internal server error |
 
 ## Common error examples

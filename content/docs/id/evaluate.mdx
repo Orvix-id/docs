@@ -1,0 +1,132 @@
+---
+title: Evaluator Models
+description: Skor, klasifikasi, dan routing dengan TypeSafe Jev lewat POST /v1/evaluate. Bukan chat.
+---
+
+# Evaluator Models
+
+`POST /v1/evaluate`
+
+Pertanyaan bertipe terhadap satu **state**. Model mengembalikan jawaban terstruktur — noul, choice, score — bukan teks yang digenerate.
+
+Ini **bukan** `/v1/chat/completions`. Mengirim `orvix/jev` ke chat ditolak. Pakai endpoint ini, atau halaman [Evaluate](https://platform.orvix.id/evaluate) di platform.
+
+Request dan response mengikuti **TypeSafe native** (System One). `boolean` diterima sebagai alias `noul`.
+
+## Katalog
+
+Sejauh ini satu evaluator yang live:
+
+| Model | Upstream | Catatan |
+|---|---|---|
+| `orvix/jev` | TypeSafe Jev (`typesafe-ai/jev`) | Tarif katalog $0.05 / 1M input; evaluate saat ini masih free |
+
+Prefix `orvix/` opsional (`jev` juga jalan). `capabilities.evaluation` di katalog menandai model evaluator. Mereka tidak muncul di playground chat atau `orvix/auto`.
+
+## Request body
+
+| Field | Tipe | Wajib | Deskripsi |
+|---|---|---|---|
+| `model` | string | Tidak | Slug katalog. Default `orvix/jev`. |
+| `state` | string, object, atau array | Ya | Konteks bersama yang dinilai setiap pertanyaan. |
+| `questions` | object | Ya | Map pertanyaan bertipe, tidak boleh kosong. |
+
+### Tipe pertanyaan
+
+| `type` | Mengembalikan | Criteria |
+|---|---|---|
+| `noul` | Probabilitas 0–1 (`noul`). Alias: `boolean`. | Opsional `{ true, false }` |
+| `choice` | Satu opsi bernama plus probabilitas | Object wajib opsi → deskripsi |
+| `score` | Skor interpolasi plus probabilitas tiap tingkat | Array wajib minimal dua label, rendah ke tinggi |
+
+Setiap pertanyaan juga butuh `instructions`. Beberapa pertanyaan tipe campur berbagi satu `state` dan dijawab dalam satu request.
+
+### Contoh
+
+```json
+{
+  "model": "orvix/jev",
+  "state": "Saya ditagih dua kali untuk langganan.",
+  "questions": {
+    "refund": {
+      "type": "noul",
+      "instructions": "Apakah pelanggan minta uang kembali?"
+    },
+    "department": {
+      "type": "choice",
+      "instructions": "Tim mana yang harus menangani ini?",
+      "criteria": {
+        "billing": "Tagihan, invoice, refund",
+        "technical": "Bug, outage, integrasi"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "Seberapa urgent tiket ini?",
+      "criteria": ["low", "medium", "high"]
+    }
+  }
+}
+```
+
+`boolean` diubah ke `noul` sebelum dipanggil upstream:
+
+```json
+{ "type": "boolean", "instructions": "Apakah refund sudah dikeluarkan?" }
+```
+
+## Respons
+
+```json
+{
+  "model": "orvix/jev",
+  "answers": {
+    "refund": { "type": "noul", "noul": 0.98 },
+    "department": {
+      "type": "choice",
+      "choice": "billing",
+      "confidence": 0.9,
+      "probabilities": { "billing": 0.97, "technical": 0.03 }
+    },
+    "urgency": {
+      "type": "score",
+      "score": 1.84,
+      "legend": { "0": "low", "1": "medium", "2": "high" },
+      "probabilities": { "0": 0, "1": 0.16, "2": 0.84 }
+    }
+  },
+  "usage": { "input_tokens": 275, "output_tokens": 20 }
+}
+```
+
+Nama field mengikuti TypeSafe (`noul`, `input_tokens`). Beberapa gateway juga mengirim `probability` / `inputTokens`; Orvix meneruskan body upstream.
+
+## cURL
+
+```bash
+curl https://api.orvix.id/v1/evaluate \
+  -H "Authorization: Bearer orv-sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "orvix/jev",
+    "state": "Saya ditagih dua kali untuk langganan.",
+    "questions": {
+      "refund": {
+        "type": "noul",
+        "instructions": "Apakah pelanggan minta uang kembali?"
+      }
+    }
+  }'
+```
+
+## Error khusus permukaan ini
+
+| HTTP | `type` | Kapan |
+|---|---|---|
+| 400 | `invalid_request_error` | Questions kosong, tipe tidak dikenal, instructions / criteria hilang |
+| 400 | `invalid_request_error` | Memanggil evaluator di `/v1/chat/completions` |
+| 404 | `invalid_request_error` | Model bukan evaluator |
+| 503 | `server_error` | Tidak ada rute evaluator yang sehat |
+| 502 | `upstream_error` | Semua rute evaluator gagal |
+
+Coba di halaman [Evaluate](https://platform.orvix.id/evaluate) (preset Quality, Sentiment, Spam, Moderation).
