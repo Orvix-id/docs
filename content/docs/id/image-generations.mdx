@@ -61,12 +61,14 @@ Untuk `gemini-3-pro-image`, kirim `aspect_ratio` (misalnya `16:9`) sebagai field
   "created": 1757200000,
   "model": "orvix/flux-2-pro",
   "data": [
-    { "url": "https://is3.cloudhost.id/orvix/orvix-images/flux-2-pro-0-….png" }
+    { "url": "https://is3.cloudhost.id/orvix/orvix-images/flux-2-pro-0-….png?X-Amz-Signature=…" }
   ]
 }
 ```
 
 API menyimpan gambar upstream ke object storage dan mengembalikan `data[].url`; base64 upstream tidak dikembalikan ke klien. Kredit baru didebit setelah penyimpanan berhasil.
+
+Gambar tersimpan bersifat privat. `data[].url` adalah tautan bertanda tangan yang kedaluwarsa dalam 24 jam, jadi unduh berkasnya alih-alih menyimpan URL-nya. `GET /v1/images` menandatangani ulang setiap dipanggil, sehingga gambar lama tetap bisa diambil dengan tautan baru.
 
 ## cURL
 

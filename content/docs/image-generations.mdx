@@ -61,12 +61,14 @@ For `gemini-3-pro-image`, pass `aspect_ratio` (for example `16:9`) as an extra f
   "created": 1757200000,
   "model": "orvix/flux-2-pro",
   "data": [
-    { "url": "https://is3.cloudhost.id/orvix/orvix-images/flux-2-pro-0-….png" }
+    { "url": "https://is3.cloudhost.id/orvix/orvix-images/flux-2-pro-0-….png?X-Amz-Signature=…" }
   ]
 }
 ```
 
 The API persists the upstream image to object storage and returns `data[].url`; upstream base64 is not returned to the client. Credits are consumed only after persistence succeeds.
+
+Stored images are private. `data[].url` is a signed link that expires after 24 hours, so download what you need rather than storing the URL. `GET /v1/images` re-signs on every call, which is how you get a fresh link for an older image.
 
 ## cURL
 
