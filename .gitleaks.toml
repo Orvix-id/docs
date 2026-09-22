@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Truncated tokens in documentation examples"
+# A value that trails off in an ellipsis is a stand-in for a real token, not
+# one. Anything that does not trail off still has to pass the default rules.
+regexTarget = "match"
+regexes = [
+  '''Bearer\s+[A-Za-z0-9_\-\.]*\.\.\.''',
+]
