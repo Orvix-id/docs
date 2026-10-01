@@ -1,0 +1,112 @@
+---
+title: OpenCode V2 Setup
+description: Add Orvix to OpenCode V2 using its native provider configuration.
+---
+
+# OpenCode V2 Setup
+
+This guide is for **OpenCode V2**. If you still use the previous OpenCode release, follow the [OpenCode Setup](/opencode) guide instead.
+
+## Before you start
+
+Create an Orvix API key at [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys). General API access requires an `ai:invoke` key.
+
+The general API endpoint is:
+
+```text
+https://api.orvix.id/v1
+```
+
+## Configure the provider
+
+Create or edit the global config:
+
+- macOS/Linux: `~/.config/opencode/opencode.json`
+- Windows: `%APPDATA%\opencode\opencode.json`
+
+Merge `providers.orvix` into an existing file without removing unrelated settings:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "providers": {
+    "orvix": {
+      "name": "Orvix",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "https://api.orvix.id/v1",
+        "apiKey": "{env:ORVIX_API_KEY}"
+      },
+      "models": {
+        "orvix/gpt-5.6-sol": {
+          "modelID": "orvix/gpt-5.6-sol",
+          "name": "GPT 5.6 Sol",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"]
+          }
+        },
+        "orvix/auto": {
+          "modelID": "orvix/auto",
+          "name": "Orvix Auto",
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"]
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+OpenCode V2 uses `providers`, `package`, `settings`, `modelID`, and `capabilities`. Do not replace them with the legacy fields `provider`, `npm`, `options`, `id`, or `modalities`.
+
+## Store the API key
+
+Store the key in the background service environment:
+
+```bash
+opencode service set env ORVIX_API_KEY "orv-sk_live_..."
+```
+
+This is more reliable than only exporting the key from a shell profile because an already-running OpenCode service may not inherit new shell variables.
+
+Verify the stored service setting without sharing its value:
+
+```bash
+opencode service get
+```
+
+## Validate and reload
+
+```bash
+python3 -m json.tool ~/.config/opencode/opencode.json
+opencode reload
+opencode models
+```
+
+Open `/models` and select an Orvix model. A selector such as `orvix/orvix/gpt-5.6-sol` is expected: the first `orvix` is the OpenCode provider ID, while `orvix/gpt-5.6-sol` is the upstream model ID sent to the API.
+
+## Add more models
+
+Fetch the current inventory from `GET https://api.orvix.id/v1/models` with `Authorization: Bearer <key>`, then add available chat models to `providers.orvix.models`.
+
+- Keep the complete upstream `orvix/` prefix in both the map key and `modelID`; removing it may cause a no BYOK route error.
+- Do not copy Orvix capability metadata directly. Map it to OpenCode's `capabilities.tools`, `capabilities.input`, `capabilities.output`, and `limit` fields.
+- Configure dedicated image and video generation models against their generation APIs rather than this chat-completions provider.
+
+## Coding Plan
+
+For OpenAI-compatible Coding Plan clients, use `https://api.orvix.id/coding/v1` with a `coding:invoke` key and an active Coding Plan. This uses `POST /coding/v1/chat/completions` and `GET /coding/v1/models`.
+
+OpenCode does not send `session_id`. To use the native sticky route at `POST /coding/completions`, install [Kamui](https://kamui-web.vercel.app) and choose **Orvix Coding**.
+
+## Troubleshooting
+
+- **Missing Authorization header:** run `opencode service get` and confirm `env.ORVIX_API_KEY` exists, then restart the service.
+- **402:** add credits at [platform.orvix.id/billing](https://platform.orvix.id/billing).
+- **No BYOK route:** use the full upstream model ID beginning with `orvix/`.
+- **Accepts at most 128 tools:** use `orvix/gpt-5.6-sol` or `orvix/auto`.
