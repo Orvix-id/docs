@@ -1,0 +1,118 @@
+---
+title: API Store
+description: Data wilayah, sekolah, hari libur, cuaca, gempa, dan KBLI Indonesia dengan satu kontrak API.
+---
+
+# API Store
+
+API Store menyediakan lima produk data Indonesia di `https://api.orvix.id/v1`. Gunakan API key project Orvix dengan scope baca produk atau `api_store:all`.
+
+```bash
+curl https://api.orvix.id/v1/regions/provinces \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## Produk dan scope
+
+| Produk | Product ID | Scope | Sumber |
+|---|---|---|---|
+| Regional Indonesia | `regional-indonesia` | `regions:read` | API Wilayah Indonesia / Emsifa |
+| Indonesia Schools | `schools-indonesia` | `schools:read` | Kemendikdasmen |
+| National Holidays | `national-holidays` | `holidays:read` | SKB 3 Menteri |
+| BMKG Indonesia | `bmkg-indonesia` | `bmkg:read` | Data terbuka BMKG |
+| KBLI 2025 | `kbli-indonesia` | `kbli:read` | BPS KBLI 2025 |
+
+Kelima produk saat ini dikonfigurasi gratis. Pemanggilan tetap dicatat ke usage project agar produk, operation, latensi, dan status dapat diobservasi. Harga dikelola server; client tidak boleh menyimpulkan billing dari body.
+
+## Regional Indonesia
+
+| Endpoint | Operation | Keterangan |
+|---|---|---|
+| `GET /v1/regions/provinces` | `provinces.list` | Daftar provinsi |
+| `GET /v1/regions/provinces/{province_id}` | `provinces.detail` | Detail provinsi |
+| `GET /v1/regions/provinces/{province_id}/regencies` | `regencies.lookup` | Kabupaten/kota dalam provinsi |
+| `GET /v1/regions/regencies/{regency_id}` | `regencies.lookup` | Detail kabupaten/kota |
+| `GET /v1/regions/regencies/{regency_id}/districts` | `districts.lookup` | Kecamatan dalam kabupaten/kota |
+| `GET /v1/regions/districts/{district_id}` | `districts.lookup` | Detail kecamatan |
+| `GET /v1/regions/districts/{district_id}/villages` | `villages.lookup` | Desa/kelurahan dalam kecamatan |
+| `GET /v1/regions/villages/{village_id}` | `villages.lookup` | Detail desa/kelurahan |
+| `GET /v1/regions/postal-codes/{postal_code}` | `postal-codes.lookup` | Pencarian kode pos lima digit |
+
+ID wilayah hanya berisi angka. Kode pos harus tepat lima digit.
+
+## Indonesia Schools
+
+`GET /v1/schools?page=1&size=20&search=Jakarta` memakai `schools.list`. `page` default 1 (maksimal 100.000), `size` default 20 (maksimal 100), dan `search` maksimal 100 karakter. Pagination berada di `meta.pagination`.
+
+`GET /v1/schools/{npsn}` memakai `schools.detail`. NPSN harus tepat delapan huruf/angka ASCII. Sekolah yang tidak ditemukan mengembalikan `404` dan `not_found`.
+
+## National Holidays
+
+| Endpoint | Operation | Keterangan |
+|---|---|---|
+| `GET /v1/holidays?year=2026` | `holidays.list` | Hari libur untuk satu tahun |
+| `GET /v1/holidays?year=2026&kind=cuti_bersama` | `holidays.list` | Filter `libur_nasional` atau `cuti_bersama` |
+| `GET /v1/holidays/2026-12-25` | `holidays.check` | Periksa tanggal `YYYY-MM-DD` |
+| `GET /v1/holidays/next?from=2026-10-01` | `holidays.next` | Libur pertama pada/setelah tanggal tersebut |
+
+`year` harus 2000–2100. Tahun valid yang belum dipublikasikan mengembalikan `dataset_not_available`, bukan daftar kosong.
+
+## BMKG Indonesia
+
+| Endpoint | Operation | Cache |
+|---|---|---|
+| `GET /v1/bmkg/earthquakes/latest` | `bmkg.earthquakes` | 60 detik |
+| `GET /v1/bmkg/earthquakes/felt` | `bmkg.felt` | 60 detik |
+| `GET /v1/bmkg/weather?adm4=31.71.01.1001` | `bmkg.weather` | 1 jam; stale maksimal 6 jam saat upstream bermasalah |
+
+`adm4` harus kode wilayah level empat numerik dengan empat bagian. Status cache tersedia di `meta.cache`.
+
+## KBLI 2025
+
+`GET /v1/kbli/categories` (`kbli.categories`), `GET /v1/kbli/codes` (`kbli.list`), dan `GET /v1/kbli/codes/{code}` (`kbli.detail`). Kode berisi 1–5 digit.
+
+Parameter list: `page` default 1 (maksimal 10.000), `size` default 20 (maksimal 100), `level` 1–5, `parent` untuk kode induk, dan `q` maksimal 100 karakter.
+
+## Kontrak sukses
+
+```json
+{
+  "data": [],
+  "meta": {
+    "request_id": "01...",
+    "product": "schools-indonesia",
+    "operation": "schools.list",
+    "source": null,
+    "pagination": { "page": 1, "page_size": 20, "total_items": 123 },
+    "cache": null
+  }
+}
+```
+
+`source`, `pagination`, dan `cache` selalu ada dan `null` jika tidak berlaku. Header `x-request-id` mengulang `meta.request_id`. Key eksternal dinormalisasi rekursif ke `snake_case`; value tidak diubah. Contoh: `Infogempa` menjadi `data.info_gempa`, `DateTime` menjadi `date_time`.
+
+## Kontrak error
+
+```json
+{
+  "error": { "code": "upstream_timeout", "message": "Region provider timed out" },
+  "meta": {
+    "request_id": "01...",
+    "product": "regional-indonesia",
+    "operation": "provinces.list",
+    "upstream": { "classification": "timeout" }
+  }
+}
+```
+
+`meta.upstream` selalu ada dan `null` untuk validation, authentication, metering, dataset lokal, serta not-found. Klasifikasi upstream: `timeout`, `unavailable`, atau `invalid_response`. Body upstream mentah dan error internal tidak diekspos.
+
+Code umum: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `upstream_timeout`, `upstream_unavailable`, dan `upstream_error`.
+
+## Migrasi dari respons lama
+
+- Baca record dari `data`, bukan root respons.
+- Baca atribusi, pagination, dan cache dari `meta.source`, `meta.pagination`, dan `meta.cache`.
+- Field pagination adalah `page`, `page_size`, dan `total_items`.
+- Ganti `Infogempa`/`DateTime` menjadi `info_gempa`/`date_time`.
+- Baca kegagalan dari `error.code` dan `error.message`; sertakan `meta.request_id` saat meminta bantuan.

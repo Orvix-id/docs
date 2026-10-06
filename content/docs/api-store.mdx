@@ -1,0 +1,132 @@
+---
+title: API Store
+description: Indonesian regional, school, holiday, weather, earthquake, and KBLI datasets through one API contract.
+---
+
+# API Store
+
+API Store exposes five Indonesian data products under `https://api.orvix.id/v1`. Use an Orvix project API key with a product read scope or `api_store:all`.
+
+```bash
+curl https://api.orvix.id/v1/regions/provinces \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## Products and scopes
+
+| Product | Product ID | Scope | Source |
+|---|---|---|---|
+| Regional Indonesia | `regional-indonesia` | `regions:read` | API Wilayah Indonesia / Emsifa |
+| Indonesia Schools | `schools-indonesia` | `schools:read` | Kemendikdasmen |
+| National Holidays | `national-holidays` | `holidays:read` | SKB 3 Menteri |
+| BMKG Indonesia | `bmkg-indonesia` | `bmkg:read` | BMKG open data |
+| KBLI 2025 | `kbli-indonesia` | `kbli:read` | BPS KBLI 2025 |
+
+All five products are currently configured as free. Calls are still metered into project usage records for product, operation, latency, and status observability. Pricing is server-managed; clients should not infer billing from the body.
+
+## Regional Indonesia
+
+| Endpoint | Operation | Description |
+|---|---|---|
+| `GET /v1/regions/provinces` | `provinces.list` | List provinces |
+| `GET /v1/regions/provinces/{province_id}` | `provinces.detail` | Province detail |
+| `GET /v1/regions/provinces/{province_id}/regencies` | `regencies.lookup` | Regencies in a province |
+| `GET /v1/regions/regencies/{regency_id}` | `regencies.lookup` | Regency detail |
+| `GET /v1/regions/regencies/{regency_id}/districts` | `districts.lookup` | Districts in a regency |
+| `GET /v1/regions/districts/{district_id}` | `districts.lookup` | District detail |
+| `GET /v1/regions/districts/{district_id}/villages` | `villages.lookup` | Villages in a district |
+| `GET /v1/regions/villages/{village_id}` | `villages.lookup` | Village detail |
+| `GET /v1/regions/postal-codes/{postal_code}` | `postal-codes.lookup` | Five-digit postal code lookup |
+
+Region IDs contain digits. Postal codes must contain exactly five digits.
+
+## Indonesia Schools
+
+`GET /v1/schools?page=1&size=20&search=Jakarta` uses operation `schools.list`.
+
+| Query | Default | Constraint |
+|---|---:|---|
+| `page` | `1` | 1–100,000 |
+| `size` | `20` | 1–100 |
+| `search` | empty | Maximum 100 characters |
+
+Pagination is returned in `meta.pagination`. `GET /v1/schools/{npsn}` uses `schools.detail`; NPSN must contain exactly eight ASCII letters or digits. A missing school returns `404` and `not_found`.
+
+## National Holidays
+
+| Endpoint | Operation | Description |
+|---|---|---|
+| `GET /v1/holidays?year=2026` | `holidays.list` | Published holidays for a year |
+| `GET /v1/holidays?year=2026&kind=cuti_bersama` | `holidays.list` | Filter `libur_nasional` or `cuti_bersama` |
+| `GET /v1/holidays/2026-12-25` | `holidays.check` | Check a `YYYY-MM-DD` date |
+| `GET /v1/holidays/next?from=2026-10-01` | `holidays.next` | First holiday on or after a date |
+
+`year` must be 2000–2100. A valid but unpublished year returns `dataset_not_available`, not an empty list.
+
+## BMKG Indonesia
+
+| Endpoint | Operation | Cache behavior |
+|---|---|---|
+| `GET /v1/bmkg/earthquakes/latest` | `bmkg.earthquakes` | 60 seconds |
+| `GET /v1/bmkg/earthquakes/felt` | `bmkg.felt` | 60 seconds |
+| `GET /v1/bmkg/weather?adm4=31.71.01.1001` | `bmkg.weather` | 1 hour; stale data may be served for up to 6 hours during an outage |
+
+`adm4` is a four-part numeric level-four region code. Cache state is explicit in `meta.cache`.
+
+## KBLI 2025
+
+| Endpoint | Operation | Description |
+|---|---|---|
+| `GET /v1/kbli/categories` | `kbli.categories` | Top-level categories |
+| `GET /v1/kbli/codes` | `kbli.list` | Paginated code directory |
+| `GET /v1/kbli/codes/{code}` | `kbli.detail` | One 1–5 digit code |
+
+List parameters: `page` defaults to 1 (maximum 10,000), `size` defaults to 20 (maximum 100), `level` is 1–5, `parent` filters by parent code, and `q` searches titles with a 100-character maximum.
+
+## Success contract
+
+```json
+{
+  "data": [],
+  "meta": {
+    "request_id": "01...",
+    "product": "schools-indonesia",
+    "operation": "schools.list",
+    "source": null,
+    "pagination": { "page": 1, "page_size": 20, "total_items": 123 },
+    "cache": null
+  }
+}
+```
+
+`source`, `pagination`, and `cache` are always present and `null` when not applicable. The `x-request-id` header repeats `meta.request_id`.
+
+External keys are recursively normalized to `snake_case` while values remain unchanged. For example, BMKG `Infogempa` becomes `data.info_gempa`, and `DateTime` becomes `date_time`.
+
+## Error contract
+
+API Store errors differ from OpenAI-compatible AI errors:
+
+```json
+{
+  "error": { "code": "upstream_timeout", "message": "Region provider timed out" },
+  "meta": {
+    "request_id": "01...",
+    "product": "regional-indonesia",
+    "operation": "provinces.list",
+    "upstream": { "classification": "timeout" }
+  }
+}
+```
+
+`meta.upstream` is always present and is `null` for validation, authentication, metering, local-dataset, and not-found errors. Upstream classifications are `timeout`, `unavailable`, or `invalid_response`. Raw upstream bodies and internal errors are never exposed.
+
+Common codes: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `upstream_timeout`, `upstream_unavailable`, and `upstream_error`.
+
+## Migrating from the legacy response
+
+- Read records from `data`, not the response root.
+- Read attribution, pagination, and cache state from `meta.source`, `meta.pagination`, and `meta.cache`.
+- Pagination fields are `page`, `page_size`, and `total_items`.
+- Replace external casing such as `Infogempa` and `DateTime` with `info_gempa` and `date_time`.
+- Read failures from `error.code` and `error.message`; include `meta.request_id` in support requests.

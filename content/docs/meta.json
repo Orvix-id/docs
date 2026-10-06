@@ -12,6 +12,7 @@
     "chat-completions",
     "image-generations",
     "evaluate",
+    "api-store",
     "streaming",
     "errors",
     "rate-limits",
@@ -25,6 +26,7 @@
     "id/chat-completions",
     "id/image-generations",
     "id/evaluate",
+    "id/api-store",
     "id/streaming",
     "id/errors",
     "id/rate-limits"

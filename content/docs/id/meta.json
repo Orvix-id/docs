@@ -10,6 +10,7 @@
     "chat-completions",
     "image-generations",
     "evaluate",
+    "api-store",
     "streaming",
     "errors",
     "rate-limits"
