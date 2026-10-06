@@ -1,11 +1,11 @@
 ---
 title: API Store
-description: Indonesian regional, school, holiday, weather, earthquake, and KBLI datasets through one API contract.
+description: Indonesian regional, school, holiday, weather, earthquake, KBLI, and NIK structure APIs through one contract.
 ---
 
 # API Store
 
-API Store exposes five Indonesian data products under `https://api.orvix.id/v1`. Use an Orvix project API key with a product read scope or `api_store:all`.
+API Store exposes six Indonesian data products under `https://api.orvix.id/v1`. Use an Orvix project API key with a product read scope or `api_store:all`.
 
 ```bash
 curl https://api.orvix.id/v1/regions/provinces \
@@ -21,12 +21,13 @@ curl https://api.orvix.id/v1/regions/provinces \
 | National Holidays | `national-holidays` | `holidays:read` | SKB 3 Menteri |
 | BMKG Indonesia | `bmkg-indonesia` | `bmkg:read` | BMKG open data |
 | KBLI 2025 | `kbli-indonesia` | `kbli:read` | BPS KBLI 2025 |
+| NIK Parser Indonesia | `nik-parser-indonesia` | `nik:read` | Orvix-hosted legacy administrative-code snapshot |
 
-All five products are currently configured as free. Calls are still metered into project usage records for product, operation, latency, and status observability. Pricing is server-managed; clients should not infer billing from the body.
+All six products are currently configured as free. Calls are still metered into project usage records for product, operation, latency, and status observability. Pricing is server-managed; clients should not infer billing from the body.
 
 ## Code examples
 
-The same helper works for all five products. Each key needs the product scope listed above, or `api_store:all`.
+Each key needs the product scope listed above, or `api_store:all`. NIK endpoints use POST rather than the GET helper below so sensitive identifiers do not appear in URLs.
 
 ### JavaScript
 
@@ -124,6 +125,25 @@ kbli = api_store("/v1/kbli/codes", {"q": "software", "page": 1, "size": 20})
 | `GET /v1/regions/postal-codes/{postal_code}` | `postal-codes.lookup` | Five-digit postal code lookup |
 
 Region IDs contain digits. Postal codes must contain exactly five digits. Postal-code search requires all four address parameters (maximum 150 characters each). Matching is case-insensitive and tolerates common `Kota`, `Kabupaten`, `Kab.`, and `Administrasi` prefixes. Results may contain multiple locations. The postal dataset is hosted by Orvix and derived from `sooluh/kodepos` under Apache-2.0; no runtime request is sent to that service.
+
+## NIK Parser Indonesia
+
+| Endpoint | Operation | Description |
+|---|---|---|
+| `POST /v1/nik/parse` | `nik.parse` | Parse one 16-digit NIK structure |
+| `POST /v1/nik/parse-batch` | `nik.parse_batch` | Parse 1–100 NIKs while preserving input order |
+
+```bash
+curl https://api.orvix.id/v1/nik/parse \
+  -X POST \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data "{\"nik\":\"$NIK\"}"
+```
+
+The parser validates format, resolves administrative area names, interprets the encoded gender/day, and infers the birth year using a rolling-century rule. Area names are returned directly as `provinsi`, `kota_kabupaten`, and `kecamatan`. It does not return the raw NIK, administrative codes, or serial number, so the response cannot be directly recombined into the submitted NIK. It never claims that an identity exists and is **not** a Dukcapil service, identity verification, or KYC check. The bundled legacy snapshot covers 34 provinces, 514 regencies, and 7,230 districts and is explicitly marked non-authoritative in `meta.source`. Raw NIK values are not written to usage records or application logs.
+
+Structurally parseable input returns HTTP 200. Invalid dates or unknown administrative codes appear in `data.issues` and set `structurally_valid` to `false`, while available partial region data remains present. Invalid format returns `nik_invalid_format`. Batch item errors are isolated inside each item and do not fail valid siblings.
 
 ## Indonesia Schools
 

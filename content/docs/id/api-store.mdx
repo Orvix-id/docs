@@ -1,11 +1,11 @@
 ---
 title: API Store
-description: Data wilayah, sekolah, hari libur, cuaca, gempa, dan KBLI Indonesia dengan satu kontrak API.
+description: API data wilayah, sekolah, hari libur, cuaca, gempa, KBLI, dan struktur NIK Indonesia dengan satu kontrak.
 ---
 
 # API Store
 
-API Store menyediakan lima produk data Indonesia di `https://api.orvix.id/v1`. Gunakan API key project Orvix dengan scope baca produk atau `api_store:all`.
+API Store menyediakan enam produk data Indonesia di `https://api.orvix.id/v1`. Gunakan API key project Orvix dengan scope baca produk atau `api_store:all`.
 
 ```bash
 curl https://api.orvix.id/v1/regions/provinces \
@@ -21,12 +21,13 @@ curl https://api.orvix.id/v1/regions/provinces \
 | National Holidays | `national-holidays` | `holidays:read` | SKB 3 Menteri |
 | BMKG Indonesia | `bmkg-indonesia` | `bmkg:read` | Data terbuka BMKG |
 | KBLI 2025 | `kbli-indonesia` | `kbli:read` | BPS KBLI 2025 |
+| NIK Parser Indonesia | `nik-parser-indonesia` | `nik:read` | Snapshot legacy kode administrasi yang di-host Orvix |
 
-Kelima produk saat ini dikonfigurasi gratis. Pemanggilan tetap dicatat ke usage project agar produk, operation, latensi, dan status dapat diobservasi. Harga dikelola server; client tidak boleh menyimpulkan billing dari body.
+Keenam produk saat ini dikonfigurasi gratis. Pemanggilan tetap dicatat ke usage project agar produk, operation, latensi, dan status dapat diobservasi. Harga dikelola server; client tidak boleh menyimpulkan billing dari body.
 
 ## Contoh kode
 
-Helper yang sama dapat dipakai untuk kelima produk. Key harus memiliki scope produk terkait atau `api_store:all`.
+Key harus memiliki scope produk terkait atau `api_store:all`. Endpoint NIK memakai POST, bukan helper GET di bawah, agar identifier sensitif tidak muncul di URL.
 
 ### JavaScript
 
@@ -124,6 +125,25 @@ kbli = api_store("/v1/kbli/codes", {"q": "perangkat lunak", "page": 1, "size": 2
 | `GET /v1/regions/postal-codes/{postal_code}` | `postal-codes.lookup` | Pencarian kode pos lima digit |
 
 ID wilayah hanya berisi angka. Kode pos harus tepat lima digit. Pencarian kode pos mewajibkan empat parameter alamat (maksimal 150 karakter per parameter). Matching tidak peka kapitalisasi dan menerima awalan umum `Kota`, `Kabupaten`, `Kab.`, serta `Administrasi`. Hasil dapat memuat beberapa lokasi. Dataset kode pos di-host sendiri oleh Orvix dan berasal dari `sooluh/kodepos` berlisensi Apache-2.0; tidak ada request runtime ke layanan tersebut.
+
+## NIK Parser Indonesia
+
+| Endpoint | Operasi | Keterangan |
+|---|---|---|
+| `POST /v1/nik/parse` | `nik.parse` | Parse struktur satu NIK 16 digit |
+| `POST /v1/nik/parse-batch` | `nik.parse_batch` | Parse 1–100 NIK dengan urutan tetap |
+
+```bash
+curl https://api.orvix.id/v1/nik/parse \
+  -X POST \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data "{\"nik\":\"$NIK\"}"
+```
+
+Parser memvalidasi format, mendapatkan nama wilayah administrasi, menginterpretasikan kode gender/tanggal, dan mengestimasi tahun lahir dengan aturan rolling century. Nama wilayah dikembalikan langsung sebagai `provinsi`, `kota_kabupaten`, dan `kecamatan`. Response tidak mengembalikan NIK mentah, kode administrasi, atau nomor urut sehingga tidak dapat langsung dirangkai kembali menjadi NIK yang dikirim. Produk ini tidak pernah menyatakan identitas benar-benar ada dan **bukan** layanan Dukcapil, verifikasi identitas, atau KYC. Snapshot legacy yang dibundel mencakup 34 provinsi, 514 kabupaten/kota, dan 7.230 kecamatan serta ditandai non-authoritative pada `meta.source`. NIK mentah tidak ditulis ke usage record atau log aplikasi.
+
+Input yang dapat diparse secara struktur mengembalikan HTTP 200. Tanggal atau kode wilayah yang tidak valid muncul di `data.issues`, membuat `structurally_valid` bernilai `false`, dan tetap mempertahankan data wilayah parsial yang tersedia. Format salah mengembalikan `nik_invalid_format`. Error per item batch tidak menggagalkan item valid lainnya.
 
 ## Indonesia Schools
 
