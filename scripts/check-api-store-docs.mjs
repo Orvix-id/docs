@@ -20,6 +20,9 @@ const required = [
   '"total_items"',
   '"upstream"',
   "info_gempa",
+  "```js",
+  "```ts",
+  "```python",
 ];
 
 for (const value of required) {

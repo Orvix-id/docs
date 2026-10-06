@@ -13,6 +13,9 @@ const required = [
   "renewalPrice",
   "apiOrderAvailable",
   "x-request-id",
+  "```js",
+  "```ts",
+  "```python",
 ];
 
 for (const value of required) {

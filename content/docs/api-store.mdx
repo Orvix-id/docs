@@ -24,6 +24,90 @@ curl https://api.orvix.id/v1/regions/provinces \
 
 All five products are currently configured as free. Calls are still metered into project usage records for product, operation, latency, and status observability. Pricing is server-managed; clients should not infer billing from the body.
 
+## Code examples
+
+The same helper works for all five products. Each key needs the product scope listed above, or `api_store:all`.
+
+### JavaScript
+
+```js
+const apiKey = process.env.ORVIX_API_KEY;
+
+async function apiStore(path, params = {}) {
+  const url = new URL(`https://api.orvix.id${path}`);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body;
+}
+
+const regions = await apiStore("/v1/regions/provinces");
+const schools = await apiStore("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const holidays = await apiStore("/v1/holidays", { year: 2026 });
+const weather = await apiStore("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await apiStore("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+```
+
+### TypeScript
+
+```ts
+type ApiStoreResponse<T> = {
+  data: T;
+  meta: {
+    request_id: string;
+    product: string;
+    operation: string;
+    source: unknown | null;
+    pagination: { page: number; page_size: number; total_items: number } | null;
+    cache: unknown | null;
+  };
+};
+
+async function apiStore<T>(path: string, params: Record<string, string | number> = {}): Promise<ApiStoreResponse<T>> {
+  const url = new URL(`https://api.orvix.id${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body as ApiStoreResponse<T>;
+}
+
+const provinces = await apiStore<Array<{ id: string; name: string }>>("/v1/regions/provinces");
+const schools = await apiStore<unknown[]>("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const holidays = await apiStore<unknown[]>("/v1/holidays", { year: 2026 });
+const weather = await apiStore<unknown>("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await apiStore<unknown[]>("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+```
+
+### Python
+
+```python
+import os
+import requests
+
+def api_store(path: str, params: dict | None = None) -> dict:
+    response = requests.get(
+        f"https://api.orvix.id{path}",
+        params=params or {},
+        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
+        timeout=15,
+    )
+    body = response.json()
+    if not response.ok:
+        error, meta = body.get("error", {}), body.get("meta", {})
+        raise RuntimeError(f"{error.get('code')}: {error.get('message')} ({meta.get('request_id')})")
+    return body
+
+regions = api_store("/v1/regions/provinces")
+schools = api_store("/v1/schools", {"search": "Jakarta", "page": 1, "size": 20})
+holidays = api_store("/v1/holidays", {"year": 2026})
+weather = api_store("/v1/bmkg/weather", {"adm4": "31.71.01.1001"})
+kbli = api_store("/v1/kbli/codes", {"q": "software", "page": 1, "size": 20})
+```
+
 ## Regional Indonesia
 
 | Endpoint | Operation | Description |

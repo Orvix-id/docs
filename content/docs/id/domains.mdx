@@ -21,6 +21,89 @@ curl "https://api.orvix.id/v1/domains/availability?domain=contoh.com" \
 
 `domains:read` tidak termasuk dalam `api_store:all`. Domains merupakan produk infrastruktur transaksional yang terpisah dari lima produk data API Store.
 
+## Contoh kode
+
+Contoh JavaScript, TypeScript, dan Python berikut mencakup availability, pricing, serta penanganan error dan `request_id`.
+
+### JavaScript
+
+```js
+const apiKey = process.env.ORVIX_API_KEY;
+
+async function domainApi(path, params) {
+  const url = new URL(`https://api.orvix.id${path}`);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body.data;
+}
+
+const availability = await domainApi("/v1/domains/availability", { domain: "contoh.com" });
+const pricing = await domainApi("/v1/domains/pricing", {
+  domain: "contoh.com",
+  period_years: 1,
+});
+console.log(availability.available, pricing.registrationPrice);
+```
+
+### TypeScript
+
+```ts
+type DomainAvailability = { name: string; tld: string; available: boolean; premium: boolean };
+type DomainPricing = {
+  name: string;
+  tld: string;
+  periodYears: number;
+  currency: "IDR";
+  registrationPrice: number;
+  renewalPrice: number;
+  whoisProtectionOffered: boolean;
+  apiOrderAvailable: false;
+};
+
+async function domainApi<T>(path: string, params: Record<string, string | number>): Promise<T> {
+  const url = new URL(`https://api.orvix.id${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body.data as T;
+}
+
+const availability = await domainApi<DomainAvailability>("/v1/domains/availability", { domain: "contoh.com" });
+const pricing = await domainApi<DomainPricing>("/v1/domains/pricing", {
+  domain: "contoh.com",
+  period_years: 1,
+});
+```
+
+### Python
+
+```python
+import os
+import requests
+
+def domain_api(path: str, params: dict) -> dict:
+    response = requests.get(
+        f"https://api.orvix.id{path}",
+        params=params,
+        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
+        timeout=15,
+    )
+    body = response.json()
+    if not response.ok:
+        error, meta = body.get("error", {}), body.get("meta", {})
+        raise RuntimeError(f"{error.get('code')}: {error.get('message')} ({meta.get('request_id')})")
+    return body["data"]
+
+availability = domain_api("/v1/domains/availability", {"domain": "contoh.com"})
+pricing = domain_api("/v1/domains/pricing", {"domain": "contoh.com", "period_years": 1})
+print(availability["available"], pricing["registrationPrice"])
+```
+
 ## Cek availability
 
 `GET /v1/domains/availability`
