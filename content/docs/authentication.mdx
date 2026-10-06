@@ -23,7 +23,7 @@ Create and manage API keys from the [Orvix Platform](https://platform.orvix.id/a
 
 To call the AI router at `/v1`, a key must have the `ai:invoke` scope. Coding Plan routes (`GET /coding/models`, `POST /coding/completions`, `GET /coding/v1/models`, `POST /coding/v1/chat/completions`) require `coding:invoke`. Keys without the matching scope receive a `401` error.
 
-API Store keys can use the umbrella `api_store:all` scope or one product scope: `regions:read`, `schools:read`, `holidays:read`, `bmkg:read`, or `kbli:read`. `api_store:all` grants all five products, but never grants AI or Coding access. See [API Store](/api-store).
+API Store keys can use the umbrella `api_store:all` scope or one product scope: `regions:read`, `schools:read`, `holidays:read`, `bmkg:read`, `kbli:read`, or `nik:read`. `api_store:all` grants all six products, but never grants AI, Coding, or Domains access. See [API Store](/api-store).
 
 Domain availability and pricing require `domains:read`. This scope is separate from `api_store:all` because Domains is a transactional infrastructure product. See [Domains](/domains).
 

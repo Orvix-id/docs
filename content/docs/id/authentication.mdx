@@ -23,7 +23,7 @@ Buat dan kelola API key dari [Orvix Platform](https://platform.orvix.id/api-keys
 
 Untuk memanggil AI router di `/v1`, key harus memiliki scope `ai:invoke`. Rute Coding Plan (`GET /coding/models`, `POST /coding/completions`, `GET /coding/v1/models`, `POST /coding/v1/chat/completions`) membutuhkan `coding:invoke`. Key tanpa scope yang sesuai akan mendapat error `401`.
 
-Key API Store dapat memakai scope payung `api_store:all` atau scope produk `regions:read`, `schools:read`, `holidays:read`, `bmkg:read`, atau `kbli:read`. `api_store:all` membuka kelima produk, tetapi tidak pernah membuka AI atau Coding. Lihat [API Store](/id/api-store).
+Key API Store dapat memakai scope payung `api_store:all` atau scope produk `regions:read`, `schools:read`, `holidays:read`, `bmkg:read`, `kbli:read`, atau `nik:read`. `api_store:all` membuka keenam produk, tetapi tidak pernah membuka AI, Coding, atau Domains. Lihat [API Store](/id/api-store).
 
 Availability dan pricing domain memerlukan `domains:read`. Scope ini terpisah dari `api_store:all` karena Domains merupakan produk infrastruktur transaksional. Lihat [Domains](/id/domains).
 
