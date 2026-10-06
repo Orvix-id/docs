@@ -128,12 +128,20 @@ ID wilayah hanya berisi angka. Kode pos harus tepat lima digit. Pencarian kode p
 
 ## NIK Parser Indonesia
 
+NIK Parser Indonesia adalah parser struktur yang menjaga privasi untuk format 16 digit pada Nomor Induk Kependudukan Indonesia. Produk ini cocok untuk validasi form, normalisasi data, dan menjelaskan atribut yang dikodekan. API tidak menghubungi Dukcapil, mencari seseorang, membuktikan kepemilikan nomor, atau melakukan KYC.
+
+- **Scope:** `nik:read` atau `api_store:all`
+- **Harga:** gratis
+- **Content type:** `application/json`
+
 | Endpoint | Operasi | Keterangan |
 |---|---|---|
 | `POST /v1/nik/parse` | `nik.parse` | Parse struktur satu NIK 16 digit |
 | `POST /v1/nik/parse-batch` | `nik.parse_batch` | Parse 1–100 NIK dengan urutan tetap |
 
 ```bash
+export NIK="nilai-16-digit-anda"
+
 curl https://api.orvix.id/v1/nik/parse \
   -X POST \
   -H "Authorization: Bearer $ORVIX_API_KEY" \
@@ -141,7 +149,124 @@ curl https://api.orvix.id/v1/nik/parse \
   --data "{\"nik\":\"$NIK\"}"
 ```
 
-Parser memvalidasi format, mendapatkan nama wilayah administrasi, menginterpretasikan kode gender/tanggal, dan mengestimasi tahun lahir dengan aturan rolling century. Nama wilayah dikembalikan langsung sebagai `provinsi`, `kota_kabupaten`, dan `kecamatan`. Response tidak mengembalikan NIK mentah, kode administrasi, atau nomor urut sehingga tidak dapat langsung dirangkai kembali menjadi NIK yang dikirim. Produk ini tidak pernah menyatakan identitas benar-benar ada dan **bukan** layanan Dukcapil, verifikasi identitas, atau KYC. Snapshot legacy yang dibundel mencakup 34 provinsi, 514 kabupaten/kota, dan 7.230 kecamatan serta ditandai non-authoritative pada `meta.source`. NIK mentah tidak ditulis ke usage record atau log aplikasi.
+### Request tunggal
+
+Body request hanya memiliki satu field:
+
+```json
+{
+  "nik": "<16 digit ASCII>"
+}
+```
+
+Response sukses memiliki bentuk berikut. Nilai di bawah hanya ilustrasi dan bukan contoh identitas atau NIK lengkap:
+
+```json
+{
+  "data": {
+    "structurally_valid": true,
+    "provinsi": "NAMA PROVINSI",
+    "kota_kabupaten": "NAMA KOTA / KABUPATEN",
+    "kecamatan": "Nama Kecamatan",
+    "birth": {
+      "date": "2000-01-01",
+      "formatted": "01 Januari 2000",
+      "age": 26,
+      "zodiac": "Capricorn",
+      "is_birthday_today": false,
+      "year_is_inferred": true,
+      "year_inference": "rolling_century"
+    },
+    "gender": {
+      "code": "L",
+      "label": "Laki-laki",
+      "symbol": "♂"
+    },
+    "issues": []
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "nik-parser-indonesia",
+    "operation": "nik.parse",
+    "source": {
+      "name": "Indonesia administrative code legacy snapshot",
+      "coverage": { "provinces": 34, "regencies": 514, "districts": 7230 },
+      "authoritative": false
+    },
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+### Field response
+
+| Field | Tipe | Arti |
+|---|---|---|
+| `structurally_valid` | boolean | `true` hanya jika tanggal dan ketiga tingkat wilayah dikenali secara struktural |
+| `provinsi` | string atau `null` | Nama provinsi dari snapshot lokal |
+| `kota_kabupaten` | string atau `null` | Nama kota atau kabupaten dari snapshot lokal |
+| `kecamatan` | string atau `null` | Nama kecamatan dari snapshot lokal |
+| `birth` | object atau `null` | Atribut kelahiran hasil interpretasi; `null` jika tanggal tidak valid |
+| `birth.date` | string | Estimasi tanggal ISO (`YYYY-MM-DD`) |
+| `birth.year_is_inferred` | boolean | Menandai bahwa tahun dua digit membutuhkan estimasi |
+| `birth.year_inference` | string | Metode estimasi; saat ini `rolling_century` |
+| `gender.code` | string | `L` atau `P`, hanya berdasarkan konvensi hari yang dikodekan |
+| `issues` | array | Masalah struktur yang ditemukan tanpa menolak seluruh input berformat benar |
+
+Tahun lahir memakai aturan rolling century: tahun dua digit yang tidak melebihi dua digit tahun saat ini ditempatkan pada 2000-an; selain itu ditempatkan pada 1900-an. Hasil ini adalah estimasi, bukan catatan kelahiran resmi.
+
+### Request batch
+
+Batch menerima 1–100 nilai dan mempertahankan urutan input:
+
+```bash
+curl https://api.orvix.id/v1/nik/parse-batch \
+  -X POST \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{"niks":["<16 digit ASCII>","invalid"]}'
+```
+
+```json
+{
+  "data": [
+    { "data": { "structurally_valid": true }, "error": null },
+    {
+      "data": null,
+      "error": {
+        "code": "nik_invalid_format",
+        "message": "NIK must contain exactly 16 digits"
+      }
+    }
+  ],
+  "meta": {
+    "product": "nik-parser-indonesia",
+    "operation": "nik.parse_batch"
+  }
+}
+```
+
+Item tidak valid tidak menggagalkan item valid lainnya. Nilai duplikat diproses secara mandiri dan urutan tidak diubah.
+
+### Masalah struktur dan status HTTP
+
+| Kondisi | HTTP | Hasil |
+|---|---:|---|
+| `nik` tunggal tidak tersedia | 400 | `nik_required` |
+| Nilai tunggal bukan tepat 16 digit ASCII | 400 | `nik_invalid_format` |
+| `niks` batch tidak tersedia | 400 | `batch_required` |
+| Batch berisi 0 atau lebih dari 100 item | 400 | `batch_too_large` |
+| Kode provinsi, kota/kabupaten, atau kecamatan tidak dikenal | 200 | Data parsial, `structurally_valid: false`, dan item pada `issues` |
+| Bulan atau hari yang dikodekan tidak valid | 200 | `birth: null`, `structurally_valid: false`, dan item pada `issues` |
+
+Kode issue yang mungkin muncul meliputi `province_not_found`, `regency_not_found`, `district_not_found`, `invalid_month`, dan `invalid_day`. Setiap issue juga memiliki `field` yang menunjuk field response terkait.
+
+### Privasi dan batasan
+
+Response sengaja tidak memuat NIK yang dikirim, NIK tersamarkan, kode administrasi, atau nomor urut. NIK mentah tidak ditulis ke application log, activity log, analytics, maupun usage record. Metering hanya menyimpan metadata operasional seperti produk, operasi, status, dan latensi.
+
+Parser tidak pernah menyatakan identitas benar-benar ada. Produk ini **bukan** layanan Dukcapil, verifikasi identitas, atau KYC. Snapshot legacy non-authoritative yang dibundel mencakup 34 provinsi, 514 kabupaten/kota, dan 7.230 kecamatan. Dataset belum mencakup empat provinsi Papua baru dan tidak boleh dianggap sebagai cakupan nasional yang lengkap atau terkini. Parsing NIK tidak melakukan network lookup saat request.
 
 Input yang dapat diparse secara struktur mengembalikan HTTP 200. Tanggal atau kode wilayah yang tidak valid muncul di `data.issues`, membuat `structurally_valid` bernilai `false`, dan tetap mempertahankan data wilayah parsial yang tersedia. Format salah mengembalikan `nik_invalid_format`. Error per item batch tidak menggagalkan item valid lainnya.
 

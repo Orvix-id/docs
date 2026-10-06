@@ -128,12 +128,20 @@ Region IDs contain digits. Postal codes must contain exactly five digits. Postal
 
 ## NIK Parser Indonesia
 
+NIK Parser Indonesia is a privacy-conscious structural parser for the 16-digit format used by Indonesian population identification numbers. It is useful for form validation, data normalization, and explaining encoded attributes. It does not contact Dukcapil, search for a person, prove ownership of a number, or perform KYC.
+
+- **Scope:** `nik:read` or `api_store:all`
+- **Price:** free
+- **Content type:** `application/json`
+
 | Endpoint | Operation | Description |
 |---|---|---|
 | `POST /v1/nik/parse` | `nik.parse` | Parse one 16-digit NIK structure |
 | `POST /v1/nik/parse-batch` | `nik.parse_batch` | Parse 1–100 NIKs while preserving input order |
 
 ```bash
+export NIK="your-16-digit-value"
+
 curl https://api.orvix.id/v1/nik/parse \
   -X POST \
   -H "Authorization: Bearer $ORVIX_API_KEY" \
@@ -141,7 +149,124 @@ curl https://api.orvix.id/v1/nik/parse \
   --data "{\"nik\":\"$NIK\"}"
 ```
 
-The parser validates format, resolves administrative area names, interprets the encoded gender/day, and infers the birth year using a rolling-century rule. Area names are returned directly as `provinsi`, `kota_kabupaten`, and `kecamatan`. It does not return the raw NIK, administrative codes, or serial number, so the response cannot be directly recombined into the submitted NIK. It never claims that an identity exists and is **not** a Dukcapil service, identity verification, or KYC check. The bundled legacy snapshot covers 34 provinces, 514 regencies, and 7,230 districts and is explicitly marked non-authoritative in `meta.source`. Raw NIK values are not written to usage records or application logs.
+### Single request
+
+The request body contains exactly one field:
+
+```json
+{
+  "nik": "<16 ASCII digits>"
+}
+```
+
+A successful response has this shape. Values below are illustrative and are not a sample identity or complete NIK:
+
+```json
+{
+  "data": {
+    "structurally_valid": true,
+    "provinsi": "NAMA PROVINSI",
+    "kota_kabupaten": "NAMA KOTA / KABUPATEN",
+    "kecamatan": "Nama Kecamatan",
+    "birth": {
+      "date": "2000-01-01",
+      "formatted": "01 Januari 2000",
+      "age": 26,
+      "zodiac": "Capricorn",
+      "is_birthday_today": false,
+      "year_is_inferred": true,
+      "year_inference": "rolling_century"
+    },
+    "gender": {
+      "code": "L",
+      "label": "Laki-laki",
+      "symbol": "♂"
+    },
+    "issues": []
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "nik-parser-indonesia",
+    "operation": "nik.parse",
+    "source": {
+      "name": "Indonesia administrative code legacy snapshot",
+      "coverage": { "provinces": 34, "regencies": 514, "districts": 7230 },
+      "authoritative": false
+    },
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+### Response fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `structurally_valid` | boolean | `true` only when the encoded date and all three administrative levels are structurally recognized |
+| `provinsi` | string or `null` | Province name from the bundled snapshot |
+| `kota_kabupaten` | string or `null` | City or regency name from the bundled snapshot |
+| `kecamatan` | string or `null` | District name from the bundled snapshot |
+| `birth` | object or `null` | Interpreted birth attributes; `null` when the encoded date is invalid |
+| `birth.date` | string | Inferred ISO date (`YYYY-MM-DD`) |
+| `birth.year_is_inferred` | boolean | Always identifies that the two-digit year required inference |
+| `birth.year_inference` | string | Inference method; currently `rolling_century` |
+| `gender.code` | string | `L` or `P`, based only on the encoded day convention |
+| `issues` | array | Structural issues discovered without rejecting otherwise well-formed input |
+
+The parser resolves administrative names, interprets the encoded gender/day, and infers the birth year with a rolling-century rule: a two-digit year not greater than the current two-digit year is placed in the 2000s; otherwise it is placed in the 1900s. This is an inference, not an authoritative birth record.
+
+### Batch request
+
+Batch parsing accepts 1–100 values and preserves their input order:
+
+```bash
+curl https://api.orvix.id/v1/nik/parse-batch \
+  -X POST \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{"niks":["<16 ASCII digits>","invalid"]}'
+```
+
+```json
+{
+  "data": [
+    { "data": { "structurally_valid": true }, "error": null },
+    {
+      "data": null,
+      "error": {
+        "code": "nik_invalid_format",
+        "message": "NIK must contain exactly 16 digits"
+      }
+    }
+  ],
+  "meta": {
+    "product": "nik-parser-indonesia",
+    "operation": "nik.parse_batch"
+  }
+}
+```
+
+An invalid item does not fail its valid siblings. Duplicate values are processed independently and order is never changed.
+
+### Structural issues and HTTP status
+
+| Condition | HTTP | Result |
+|---|---:|---|
+| Missing single `nik` | 400 | `nik_required` |
+| Single value is not exactly 16 ASCII digits | 400 | `nik_invalid_format` |
+| Missing batch `niks` | 400 | `batch_required` |
+| Batch contains 0 or more than 100 items | 400 | `batch_too_large` |
+| Unknown province, city/regency, or district code | 200 | Partial data, `structurally_valid: false`, and an item in `issues` |
+| Invalid encoded month or day | 200 | `birth: null`, `structurally_valid: false`, and an item in `issues` |
+
+Possible issue codes include `province_not_found`, `regency_not_found`, `district_not_found`, `invalid_month`, and `invalid_day`. Each issue also contains a `field` pointing to the affected response field.
+
+### Privacy and limitations
+
+The response deliberately omits the submitted NIK, masked NIK, administrative codes, and serial number. Raw NIK values are not written to application logs, activity logs, analytics, or usage records. Usage metering stores operational metadata such as product, operation, status, and latency.
+
+The parser never claims that an identity exists. It is **not** a Dukcapil service, identity verification, or KYC check. The bundled non-authoritative legacy snapshot covers 34 provinces, 514 regencies, and 7,230 districts. It does not include the four newer Papua provinces and must not be treated as complete or current national coverage. No runtime network lookup is made for NIK parsing.
 
 Structurally parseable input returns HTTP 200. Invalid dates or unknown administrative codes appear in `data.issues` and set `structurally_valid` to `false`, while available partial region data remains present. Invalid format returns `nik_invalid_format`. Batch item errors are isolated inside each item and do not fail valid siblings.
 
