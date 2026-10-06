@@ -120,9 +120,10 @@ kbli = api_store("/v1/kbli/codes", {"q": "software", "page": 1, "size": 20})
 | `GET /v1/regions/districts/{district_id}` | `districts.lookup` | District detail |
 | `GET /v1/regions/districts/{district_id}/villages` | `villages.lookup` | Villages in a district |
 | `GET /v1/regions/villages/{village_id}` | `villages.lookup` | Village detail |
+| `GET /v1/regions/postal-codes?province=...&regency=...&district=...&village=...` | `postal-codes.search` | Exact hierarchical address search |
 | `GET /v1/regions/postal-codes/{postal_code}` | `postal-codes.lookup` | Five-digit postal code lookup |
 
-Region IDs contain digits. Postal codes must contain exactly five digits.
+Region IDs contain digits. Postal codes must contain exactly five digits. Postal-code search requires all four address parameters (maximum 150 characters each). Matching is case-insensitive and tolerates common `Kota`, `Kabupaten`, `Kab.`, and `Administrasi` prefixes. Results may contain multiple locations. The postal dataset is hosted by Orvix and derived from `sooluh/kodepos` under Apache-2.0; no runtime request is sent to that service.
 
 ## Indonesia Schools
 

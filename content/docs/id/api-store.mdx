@@ -120,9 +120,10 @@ kbli = api_store("/v1/kbli/codes", {"q": "perangkat lunak", "page": 1, "size": 2
 | `GET /v1/regions/districts/{district_id}` | `districts.lookup` | Detail kecamatan |
 | `GET /v1/regions/districts/{district_id}/villages` | `villages.lookup` | Desa/kelurahan dalam kecamatan |
 | `GET /v1/regions/villages/{village_id}` | `villages.lookup` | Detail desa/kelurahan |
+| `GET /v1/regions/postal-codes?province=...&regency=...&district=...&village=...` | `postal-codes.search` | Pencarian alamat hierarkis exact-match |
 | `GET /v1/regions/postal-codes/{postal_code}` | `postal-codes.lookup` | Pencarian kode pos lima digit |
 
-ID wilayah hanya berisi angka. Kode pos harus tepat lima digit.
+ID wilayah hanya berisi angka. Kode pos harus tepat lima digit. Pencarian kode pos mewajibkan empat parameter alamat (maksimal 150 karakter per parameter). Matching tidak peka kapitalisasi dan menerima awalan umum `Kota`, `Kabupaten`, `Kab.`, serta `Administrasi`. Hasil dapat memuat beberapa lokasi. Dataset kode pos di-host sendiri oleh Orvix dan berasal dari `sooluh/kodepos` berlisensi Apache-2.0; tidak ada request runtime ke layanan tersebut.
 
 ## Indonesia Schools
 
