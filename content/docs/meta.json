@@ -13,6 +13,7 @@
     "image-generations",
     "evaluate",
     "api-store",
+    "domains",
     "streaming",
     "errors",
     "rate-limits",
@@ -27,6 +28,7 @@
     "id/image-generations",
     "id/evaluate",
     "id/api-store",
+    "id/domains",
     "id/streaming",
     "id/errors",
     "id/rate-limits"

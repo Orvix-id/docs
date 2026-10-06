@@ -1,0 +1,123 @@
+---
+title: Domains
+description: Check domain availability and public registration and renewal prices through the Orvix API.
+---
+
+# Domains
+
+The Domains API checks domain availability and current public sell prices through the same `api.orvix.id` origin as other Orvix APIs.
+
+```text
+Base URL: https://api.orvix.id
+Required scope: domains:read
+```
+
+Create or update an API key in the [Orvix Platform](https://platform.orvix.id/api-keys), then send it as a bearer token:
+
+```bash
+curl "https://api.orvix.id/v1/domains/availability?domain=example.com" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+`domains:read` is not included in `api_store:all`. Domains is a transactional infrastructure product, separate from the five data products in API Store.
+
+## Check availability
+
+`GET /v1/domains/availability`
+
+| Query | Required | Description |
+|---|---|---|
+| `domain` | yes | A full domain such as `example.com`, or a label such as `example` |
+| `tld` | no | Ending used when `domain` is only a label; defaults to `my.id` |
+
+Input is normalized to lowercase. A URL, path, leading `www.`, or trailing dot is removed before validation. Labels must contain 1–63 ASCII letters, digits, or hyphens, and cannot start or end with a hyphen.
+
+```json
+{
+  "data": {
+    "name": "example.com",
+    "tld": "com",
+    "available": true,
+    "premium": false
+  },
+  "meta": {
+    "request_id": "...",
+    "product": "domains",
+    "operation": "domains.availability"
+  }
+}
+```
+
+An availability result is a point-in-time lookup, **not a reservation or guarantee**. Another party may register the domain before checkout. A premium result is reported separately and is not treated as normally available.
+
+## Check pricing
+
+`GET /v1/domains/pricing`
+
+| Query | Required | Description |
+|---|---|---|
+| `domain` | yes | Full domain or label; label length can affect promotional eligibility |
+| `tld` | no | Ending used when `domain` is only a label; defaults to `my.id` |
+| `period_years` | no | Registration period, currently `1` for offered products |
+
+```bash
+curl "https://api.orvix.id/v1/domains/pricing?domain=example.com&period_years=1" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+```json
+{
+  "data": {
+    "name": "example.com",
+    "tld": "com",
+    "periodYears": 1,
+    "currency": "IDR",
+    "registrationPrice": 150000,
+    "renewalPrice": 180000,
+    "whoisProtectionOffered": false,
+    "apiOrderAvailable": false
+  },
+  "meta": {
+    "request_id": "...",
+    "product": "domains",
+    "operation": "domains.pricing"
+  }
+}
+```
+
+The amounts are public Orvix sell prices in whole Indonesian rupiah. Registration and renewal prices are intentionally separate. Pricing may change until a checkout quote is created; this endpoint does not create or reserve a quote. Upstream cost and provider identifiers are never exposed.
+
+Only endings enabled for checkout return pricing. Availability supports a wider set of RDASH-priced endings, so an ending can be searchable while not yet purchasable.
+
+## Errors
+
+```json
+{
+  "error": {
+    "code": "authentication_error",
+    "message": "Invalid API key or missing domains:read scope"
+  },
+  "meta": {
+    "request_id": "...",
+    "product": "domains",
+    "operation": null
+  }
+}
+```
+
+Common codes:
+
+| HTTP | Code | Meaning |
+|---:|---|---|
+| 400 | `invalid_request_error` | Invalid domain, unsupported ending, or invalid period |
+| 401 | `authentication_error` | Missing/invalid key or missing `domains:read` |
+| 403 | `checkout_closed` | The ending is searchable but not currently offered for purchase |
+| 502 | `upstream_unavailable` | Availability or pricing provider is temporarily unavailable |
+
+The response header `x-request-id` matches `meta.request_id` when returned by the domain engine. Include it in support requests.
+
+## Ordering
+
+Domain purchase through public API keys is not available in this MVP. `apiOrderAvailable` is currently `false`. Use the [Orvix Platform](https://platform.orvix.id/domains) to create a quote and place an order; existing checkout deducts the organization’s top-up balance.
+
+Do not build an automated purchase flow from availability or pricing alone. Future order endpoints will require a short-lived quote, explicit acknowledgements, and an idempotency key.

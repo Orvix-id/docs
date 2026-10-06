@@ -11,6 +11,7 @@
     "image-generations",
     "evaluate",
     "api-store",
+    "domains",
     "streaming",
     "errors",
     "rate-limits"

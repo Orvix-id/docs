@@ -1,0 +1,121 @@
+---
+title: Domains
+description: Cek availability serta harga registrasi dan renewal domain melalui Orvix API.
+---
+
+# Domains
+
+Domains API menyediakan pengecekan availability dan harga jual terkini melalui origin yang sama dengan API Orvix lainnya.
+
+```text
+Base URL: https://api.orvix.id
+Scope wajib: domains:read
+```
+
+Buat atau update API key di [Orvix Platform](https://platform.orvix.id/api-keys), lalu kirim sebagai bearer token:
+
+```bash
+curl "https://api.orvix.id/v1/domains/availability?domain=contoh.com" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+`domains:read` tidak termasuk dalam `api_store:all`. Domains merupakan produk infrastruktur transaksional yang terpisah dari lima produk data API Store.
+
+## Cek availability
+
+`GET /v1/domains/availability`
+
+| Query | Wajib | Keterangan |
+|---|---|---|
+| `domain` | ya | Domain penuh seperti `contoh.com`, atau label seperti `contoh` |
+| `tld` | tidak | Akhiran untuk input label; default `my.id` |
+
+Input dinormalisasi menjadi lowercase. URL, path, awalan `www.`, dan titik terakhir dibuang sebelum validasi. Label harus berisi 1–63 huruf ASCII, angka, atau tanda hubung serta tidak boleh diawali/diakhiri tanda hubung.
+
+```json
+{
+  "data": {
+    "name": "contoh.com",
+    "tld": "com",
+    "available": true,
+    "premium": false
+  },
+  "meta": {
+    "request_id": "...",
+    "product": "domains",
+    "operation": "domains.availability"
+  }
+}
+```
+
+Hasil availability adalah pengecekan pada saat request, **bukan reservasi atau jaminan**. Domain dapat diregistrasikan pihak lain sebelum checkout. Domain premium dilaporkan terpisah dan tidak dianggap tersedia secara normal.
+
+## Cek harga
+
+`GET /v1/domains/pricing`
+
+| Query | Wajib | Keterangan |
+|---|---|---|
+| `domain` | ya | Domain penuh atau label; panjang label dapat memengaruhi promo |
+| `tld` | tidak | Akhiran untuk input label; default `my.id` |
+| `period_years` | tidak | Periode registrasi, saat ini `1` untuk produk yang ditawarkan |
+
+```bash
+curl "https://api.orvix.id/v1/domains/pricing?domain=contoh.com&period_years=1" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+```json
+{
+  "data": {
+    "name": "contoh.com",
+    "tld": "com",
+    "periodYears": 1,
+    "currency": "IDR",
+    "registrationPrice": 150000,
+    "renewalPrice": 180000,
+    "whoisProtectionOffered": false,
+    "apiOrderAvailable": false
+  },
+  "meta": {
+    "request_id": "...",
+    "product": "domains",
+    "operation": "domains.pricing"
+  }
+}
+```
+
+Nominal merupakan harga jual publik Orvix dalam rupiah penuh. Harga registrasi dan renewal sengaja dipisahkan. Harga dapat berubah sampai quote checkout dibuat; endpoint ini tidak membuat atau mereservasi quote. Harga modal dan ID provider tidak pernah diekspos.
+
+Pricing hanya tersedia untuk akhiran yang sudah dibuka untuk checkout. Availability mendukung lebih banyak akhiran yang memiliki harga di RDASH, sehingga sebuah akhiran dapat dicari tetapi belum dapat dibeli.
+
+## Error
+
+```json
+{
+  "error": {
+    "code": "authentication_error",
+    "message": "Invalid API key or missing domains:read scope"
+  },
+  "meta": {
+    "request_id": "...",
+    "product": "domains",
+    "operation": null
+  }
+}
+```
+
+| HTTP | Code | Arti |
+|---:|---|---|
+| 400 | `invalid_request_error` | Domain, akhiran, atau periode tidak valid |
+| 401 | `authentication_error` | Key tidak ada/tidak valid atau tidak memiliki `domains:read` |
+| 403 | `checkout_closed` | Akhiran dapat dicari tetapi belum ditawarkan untuk pembelian |
+| 502 | `upstream_unavailable` | Provider availability atau pricing sedang bermasalah |
+
+Header `x-request-id` mengikuti `meta.request_id` saat dikembalikan domain engine. Sertakan nilainya ketika meminta bantuan.
+
+## Order domain
+
+Pembelian domain melalui public API key belum tersedia dalam MVP ini. `apiOrderAvailable` saat ini selalu `false`. Gunakan [Orvix Platform](https://platform.orvix.id/domains) untuk membuat quote dan melakukan order; checkout existing memotong top-up balance organisasi.
+
+Jangan membuat automation pembelian hanya dari hasil availability atau pricing. Endpoint order mendatang akan membutuhkan quote berumur pendek, acknowledgement eksplisit, dan idempotency key.

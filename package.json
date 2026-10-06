@@ -9,6 +9,7 @@
     "types:check": "next typegen && tsc --noEmit",
     "lint": "biome check",
     "test:api-store-docs": "node scripts/check-api-store-docs.mjs",
+    "test:domains-docs": "node scripts/check-domains-docs.mjs",
     "format": "biome format --write"
   },
   "dependencies": {

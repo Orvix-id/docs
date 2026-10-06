@@ -25,6 +25,8 @@ To call the AI router at `/v1`, a key must have the `ai:invoke` scope. Coding Pl
 
 API Store keys can use the umbrella `api_store:all` scope or one product scope: `regions:read`, `schools:read`, `holidays:read`, `bmkg:read`, or `kbli:read`. `api_store:all` grants all five products, but never grants AI or Coding access. See [API Store](/api-store).
 
+Domain availability and pricing require `domains:read`. This scope is separate from `api_store:all` because Domains is a transactional infrastructure product. See [Domains](/domains).
+
 ## Error responses
 
 | HTTP status | Error type | Message |

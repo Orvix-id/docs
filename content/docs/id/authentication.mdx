@@ -25,6 +25,8 @@ Untuk memanggil AI router di `/v1`, key harus memiliki scope `ai:invoke`. Rute C
 
 Key API Store dapat memakai scope payung `api_store:all` atau scope produk `regions:read`, `schools:read`, `holidays:read`, `bmkg:read`, atau `kbli:read`. `api_store:all` membuka kelima produk, tetapi tidak pernah membuka AI atau Coding. Lihat [API Store](/id/api-store).
 
+Availability dan pricing domain memerlukan `domains:read`. Scope ini terpisah dari `api_store:all` karena Domains merupakan produk infrastruktur transaksional. Lihat [Domains](/id/domains).
+
 ## Response error
 
 | HTTP status | Tipe error | Pesan |
