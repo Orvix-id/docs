@@ -1,0 +1,128 @@
+---
+title: KTP OCR
+description: Baca field dari foto KTP Indonesia menjadi JSON. Rp300 per ekstraksi sukses.
+---
+
+# KTP OCR
+
+KTP OCR membaca foto KTP Indonesia dan mengembalikan field-nya sebagai JSON, dicek terhadap referensi wilayah.
+
+- **Endpoint:** `POST /v1/ktp/extract` (operation `ktp.extract`)
+- **Scope:** `ktp:extract` atau `api_store:all`
+- **Harga:** Rp300 per ekstraksi sukses; setiap kegagalan di-refund
+- **Input:** `multipart/form-data` dengan gambar JPEG, PNG, atau WebP di field `file`, maksimal 10 MB
+
+```bash
+curl https://api.orvix.id/v1/ktp/extract \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -F "file=@ktp.jpg"
+```
+
+```js
+import { readFile } from "node:fs/promises";
+
+const form = new FormData();
+form.append("file", new Blob([await readFile("ktp.jpg")]), "ktp.jpg");
+const response = await fetch("https://api.orvix.id/v1/ktp/extract", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+  body: form,
+});
+const body = await response.json();
+```
+
+```python
+import os
+import requests
+
+with open("ktp.jpg", "rb") as file:
+    response = requests.post(
+        "https://api.orvix.id/v1/ktp/extract",
+        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
+        files={"file": file},
+        timeout=120,
+    )
+body = response.json()
+```
+
+Jenis gambar dideteksi dari isi file, bukan dari content type yang dikirim. Call biasanya selesai dalam hitungan detik; beri timeout minimal 120 detik.
+
+## Respons
+
+Nilai di bawah hanya ilustrasi:
+
+```json
+{
+  "data": {
+    "needs_review": false,
+    "warnings": [],
+    "koreksi": [],
+    "ktp": {
+      "provinsi": "DKI JAKARTA",
+      "kota": "JAKARTA SELATAN",
+      "nik": "<16 digit>",
+      "nama": "<nama>",
+      "tempat_lahir": "JAKARTA",
+      "tanggal_lahir": "1990-01-31",
+      "jenis_kelamin": "LAKI-LAKI",
+      "golongan_darah": null,
+      "alamat": "<jalan>",
+      "rt_rw": "001/002",
+      "kelurahan": "<kelurahan>",
+      "kecamatan": "<kecamatan>",
+      "agama": "ISLAM",
+      "status_perkawinan": "BELUM KAWIN",
+      "pekerjaan": "KARYAWAN SWASTA",
+      "kewarganegaraan": "WNI",
+      "berlaku_hingga": "SEUMUR HIDUP",
+      "dikeluarkan_di": "JAKARTA SELATAN",
+      "tanggal_dikeluarkan": "2012-05-10"
+    },
+    "referensi": {}
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "ktp-ocr",
+    "operation": "ktp.extract",
+    "source": null,
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+Setiap field di `data.ktp` berupa string atau `null`. Tanggal berformat `YYYY-MM-DD`, `rt_rw` berformat `000/000`, dan `jenis_kelamin` bernilai `LAKI-LAKI` atau `PEREMPUAN`.
+
+| Field | Arti |
+|---|---|
+| `needs_review` | `true` jika ada warning. Minta orang mengecek hasilnya sebelum dipakai. |
+| `warnings` | `{ "field", "code", "message" }` untuk setiap nilai yang gagal aturan format atau konsistensi |
+| `koreksi` | `{ "field", "dari", "menjadi" }` untuk setiap nama wilayah yang dikoreksi dari referensi wilayah |
+| `referensi` | Data referensi wilayah dan NIK yang dipakai untuk pengecekan; `{}` jika tidak tersedia |
+
+KTP OCR membaca apa yang tertulis di kartu. Ini **bukan** verifikasi identitas, lookup Dukcapil, atau KYC.
+
+## Batas gambar yang ditolak
+
+Gambar yang bukan KTP (`not_ktp`) atau tidak terbaca (`unreadable_image`) di-refund, tetapi tetap memakan satu panggilan model di sisi Orvix. Setiap organisasi boleh punya maksimal **8** penolakan seperti itu per produk dalam satu jam bergulir. Setelah itu, call mengembalikan `429` dan `too_many_rejected_images` dengan header `Retry-After` dalam detik, sampai penolakan lama keluar dari jendela satu jam. Call yang kena batas ditolak sebelum saldo disentuh. Ekstraksi sukses dan error lain tidak dihitung.
+
+Supaya tidak kena batas, minta pengguna mengirim foto kartu yang terang dan tidak terpotong, lalu cek jenis dan ukuran file sebelum upload.
+
+## Error
+
+| Status | Code | Ditagih |
+|---|---|---|
+| `400` | `invalid_multipart`, `file_required`, `invalid_image` | Tidak |
+| `402` | `insufficient_balance` | Tidak |
+| `413` | `file_too_large` | Tidak |
+| `415` | `multipart_required`, `unsupported_file_type` | Tidak |
+| `422` | `not_ktp`, `unreadable_image` | Di-refund |
+| `429` | `too_many_rejected_images` | Tidak |
+| `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Di-refund |
+| `503` | `not_configured`, `metering_error` | Tidak |
+
+Saldo dipotong saat call diterima, setelah pengecekan file lokal lolos. Ekstraksi sukses tetap ditagih. Semua hasil lain setelah call diterima di-refund penuh, termasuk koneksi yang tertutup sebelum jawaban datang.
+
+## Privasi
+
+Orvix tidak menyimpan gambar yang di-upload. Gambar hanya ada di memori selama ekstraksi dan dikirim ke model vision yang membacanya. Usage record menyimpan produk, operation, status, dan latensi, bukan field hasil ekstraksi.

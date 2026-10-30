@@ -1,0 +1,128 @@
+---
+title: KTP OCR
+description: Read the fields of an Indonesian KTP photo into JSON. Rp300 per successful extraction.
+---
+
+# KTP OCR
+
+KTP OCR reads a photo of an Indonesian identity card (KTP) and returns its fields as JSON, checked against the regional reference.
+
+- **Endpoint:** `POST /v1/ktp/extract` (operation `ktp.extract`)
+- **Scope:** `ktp:extract` or `api_store:all`
+- **Price:** Rp300 per successful extraction; every failure is refunded
+- **Input:** `multipart/form-data` with a JPEG, PNG, or WebP image in the field `file`, at most 10 MB
+
+```bash
+curl https://api.orvix.id/v1/ktp/extract \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -F "file=@ktp.jpg"
+```
+
+```js
+import { readFile } from "node:fs/promises";
+
+const form = new FormData();
+form.append("file", new Blob([await readFile("ktp.jpg")]), "ktp.jpg");
+const response = await fetch("https://api.orvix.id/v1/ktp/extract", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+  body: form,
+});
+const body = await response.json();
+```
+
+```python
+import os
+import requests
+
+with open("ktp.jpg", "rb") as file:
+    response = requests.post(
+        "https://api.orvix.id/v1/ktp/extract",
+        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
+        files={"file": file},
+        timeout=120,
+    )
+body = response.json()
+```
+
+The image type is detected from the file content, not from the declared content type. A call usually finishes within seconds; allow at least 120 seconds before timing out.
+
+## Response
+
+Values below are illustrative:
+
+```json
+{
+  "data": {
+    "needs_review": false,
+    "warnings": [],
+    "koreksi": [],
+    "ktp": {
+      "provinsi": "DKI JAKARTA",
+      "kota": "JAKARTA SELATAN",
+      "nik": "<16 digits>",
+      "nama": "<name>",
+      "tempat_lahir": "JAKARTA",
+      "tanggal_lahir": "1990-01-31",
+      "jenis_kelamin": "LAKI-LAKI",
+      "golongan_darah": null,
+      "alamat": "<street>",
+      "rt_rw": "001/002",
+      "kelurahan": "<kelurahan>",
+      "kecamatan": "<kecamatan>",
+      "agama": "ISLAM",
+      "status_perkawinan": "BELUM KAWIN",
+      "pekerjaan": "KARYAWAN SWASTA",
+      "kewarganegaraan": "WNI",
+      "berlaku_hingga": "SEUMUR HIDUP",
+      "dikeluarkan_di": "JAKARTA SELATAN",
+      "tanggal_dikeluarkan": "2012-05-10"
+    },
+    "referensi": {}
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "ktp-ocr",
+    "operation": "ktp.extract",
+    "source": null,
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+Every field in `data.ktp` is a string or `null`. Dates are `YYYY-MM-DD`, `rt_rw` is `000/000`, and `jenis_kelamin` is `LAKI-LAKI` or `PEREMPUAN`.
+
+| Field | Meaning |
+|---|---|
+| `needs_review` | `true` when any warning was raised. Have a person check the result before using it. |
+| `warnings` | `{ "field", "code", "message" }` for each value that failed a format or consistency rule |
+| `koreksi` | `{ "field", "dari", "menjadi" }` for each region name corrected against the regional reference |
+| `referensi` | Region and NIK reference data used for those checks; `{}` when unavailable |
+
+KTP OCR reads what the card shows. It is **not** identity verification, a Dukcapil lookup, or a KYC check.
+
+## Rejected image limit
+
+An image that is not a KTP (`not_ktp`) or cannot be read (`unreadable_image`) is refunded, but it still costs Orvix a model call. Each organization may have at most **8** such rejections per product in a rolling hour. After that, calls return `429` and `too_many_rejected_images` with a `Retry-After` header in seconds, until older rejections leave the one-hour window. A limited call is refused before the balance is touched. Successful extractions and other errors do not count.
+
+To stay under the limit, ask users for a well-lit, uncropped photo of the card and check the file type and size before uploading.
+
+## Errors
+
+| Status | Codes | Charged |
+|---|---|---|
+| `400` | `invalid_multipart`, `file_required`, `invalid_image` | No |
+| `402` | `insufficient_balance` | No |
+| `413` | `file_too_large` | No |
+| `415` | `multipart_required`, `unsupported_file_type` | No |
+| `422` | `not_ktp`, `unreadable_image` | Refunded |
+| `429` | `too_many_rejected_images` | No |
+| `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Refunded |
+| `503` | `not_configured`, `metering_error` | No |
+
+The balance is debited when the call is admitted, after the local file checks pass. A successful extraction keeps the charge. Every other outcome after admission is refunded in full, including a connection that closes before the answer arrives.
+
+## Privacy
+
+Orvix does not store the uploaded image. It is held in memory for the extraction and sent to the vision model that reads it. Usage records keep the product, operation, status, and latency, not the extracted fields.

@@ -1,0 +1,167 @@
+---
+title: API Store
+description: API data Indonesia dan ekstraksi dokumen (wilayah, sekolah, hari libur, BMKG, KBLI, NIK, rumah sakit, universitas, CV, KTP, NPWP) dengan satu kontrak.
+---
+
+# API Store
+
+API Store menyediakan sebelas produk data Indonesia dan ekstraksi dokumen di `https://api.orvix.id/v1`. Gunakan API key project Orvix dengan scope produk atau `api_store:all`.
+
+```bash
+curl https://api.orvix.id/v1/regions/provinces \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## Produk dan scope
+
+| Produk | Product ID | Scope | Harga | Sumber |
+|---|---|---|---|---|
+| [Regional Indonesia](/id/api-store/regional-indonesia) | `regional-indonesia` | `regions:read` | Gratis | API Wilayah Indonesia / Emsifa |
+| [Indonesia Schools](/id/api-store/schools-indonesia) | `schools-indonesia` | `schools:read` | Gratis | Kemendikdasmen |
+| [National Holidays](/id/api-store/national-holidays) | `national-holidays` | `holidays:read` | Gratis | SKB 3 Menteri |
+| [BMKG Indonesia](/id/api-store/bmkg-indonesia) | `bmkg-indonesia` | `bmkg:read` | Gratis | Data terbuka BMKG |
+| [KBLI 2025](/id/api-store/kbli-indonesia) | `kbli-indonesia` | `kbli:read` | Gratis | BPS KBLI 2025 |
+| [NIK Parser Indonesia](/id/api-store/nik-parser-indonesia) | `nik-parser-indonesia` | `nik:read` | Gratis | Snapshot legacy kode administrasi yang di-host Orvix |
+| [Hospitals Indonesia](/id/api-store/hospitals-indonesia) | `hospitals-indonesia` | `hospitals:read` | Gratis, 1.000 call/hari | SumoPod API Services |
+| [Universities Indonesia](/id/api-store/universities-indonesia) | `universities-indonesia` | `universities:read` | Gratis, 1.000 call/hari | SumoPod API Services |
+| [CV Extractor](/id/api-store/cv-extractor) | `cv-extractor` | `cv:extract` | Rp300 per sukses | Orvix |
+| [KTP OCR](/id/api-store/ktp-ocr) | `ktp-ocr` | `ktp:extract` | Rp300 per sukses | Orvix |
+| [NPWP OCR](/id/api-store/npwp-ocr) | `npwp-ocr` | `npwp:extract` | Rp300 per sukses | Orvix |
+
+`api_store:all` membuka semua produk di atas, tetapi tidak pernah membuka AI, Coding, atau Domains.
+
+## Harga dan batas
+
+Produk berbayar memotong saldo organisasi saat call diterima. Call yang sukses tetap ditagih; setiap call yang gagal di-refund penuh. Call tanpa saldo cukup mengembalikan `402` dan `insufficient_balance` sebelum ada proses apa pun. Produk gratis tidak pernah menyentuh saldo.
+
+Setiap call, gratis maupun berbayar, dicatat ke usage project agar produk, operation, latensi, dan status dapat diobservasi. Harga dikelola server; client tidak boleh menyimpulkan billing dari body.
+
+Hospitals Indonesia dan Universities Indonesia berbagi 1.000 call per organisasi dalam 24 jam bergulir (`429`, `daily_limit_exceeded`). KTP OCR dan NPWP OCR mengizinkan 8 gambar yang ditolak per organisasi per jam (`429`, `too_many_rejected_images`, dengan `Retry-After`).
+
+## Contoh kode
+
+Key harus memiliki scope produk terkait atau `api_store:all`. Contoh di bawah untuk produk data GET; lihat halaman tiap produk untuk contohnya sendiri. Endpoint NIK memakai POST, bukan helper GET di bawah, agar identifier sensitif tidak muncul di URL.
+
+### JavaScript
+
+```js
+const apiKey = process.env.ORVIX_API_KEY;
+
+async function apiStore(path, params = {}) {
+  const url = new URL(`https://api.orvix.id${path}`);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body;
+}
+
+const wilayah = await apiStore("/v1/regions/provinces");
+const sekolah = await apiStore("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const libur = await apiStore("/v1/holidays", { year: 2026 });
+const cuaca = await apiStore("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await apiStore("/v1/kbli/codes", { q: "perangkat lunak", page: 1, size: 20 });
+```
+
+### TypeScript
+
+```ts
+type ApiStoreResponse<T> = {
+  data: T;
+  meta: {
+    request_id: string;
+    product: string;
+    operation: string;
+    source: unknown | null;
+    pagination: { page: number; page_size: number; total_items: number } | null;
+    cache: unknown | null;
+  };
+};
+
+async function apiStore<T>(path: string, params: Record<string, string | number> = {}): Promise<ApiStoreResponse<T>> {
+  const url = new URL(`https://api.orvix.id${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body as ApiStoreResponse<T>;
+}
+
+const provinsi = await apiStore<Array<{ id: string; name: string }>>("/v1/regions/provinces");
+const sekolah = await apiStore<unknown[]>("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const libur = await apiStore<unknown[]>("/v1/holidays", { year: 2026 });
+const cuaca = await apiStore<unknown>("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await apiStore<unknown[]>("/v1/kbli/codes", { q: "perangkat lunak", page: 1, size: 20 });
+```
+
+### Python
+
+```python
+import os
+import requests
+
+def api_store(path: str, params: dict | None = None) -> dict:
+    response = requests.get(
+        f"https://api.orvix.id{path}",
+        params=params or {},
+        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
+        timeout=15,
+    )
+    body = response.json()
+    if not response.ok:
+        error, meta = body.get("error", {}), body.get("meta", {})
+        raise RuntimeError(f"{error.get('code')}: {error.get('message')} ({meta.get('request_id')})")
+    return body
+
+wilayah = api_store("/v1/regions/provinces")
+sekolah = api_store("/v1/schools", {"search": "Jakarta", "page": 1, "size": 20})
+libur = api_store("/v1/holidays", {"year": 2026})
+cuaca = api_store("/v1/bmkg/weather", {"adm4": "31.71.01.1001"})
+kbli = api_store("/v1/kbli/codes", {"q": "perangkat lunak", "page": 1, "size": 20})
+```
+
+## Kontrak sukses
+
+```json
+{
+  "data": [],
+  "meta": {
+    "request_id": "01...",
+    "product": "schools-indonesia",
+    "operation": "schools.list",
+    "source": null,
+    "pagination": { "page": 1, "page_size": 20, "total_items": 123 },
+    "cache": null
+  }
+}
+```
+
+`source`, `pagination`, dan `cache` selalu ada dan `null` jika tidak berlaku. Header `x-request-id` mengulang `meta.request_id`. Key eksternal dinormalisasi rekursif ke `snake_case`; value tidak diubah. Contoh: `Infogempa` menjadi `data.info_gempa`, `DateTime` menjadi `date_time`.
+
+## Kontrak error
+
+```json
+{
+  "error": { "code": "upstream_timeout", "message": "Region provider timed out" },
+  "meta": {
+    "request_id": "01...",
+    "product": "regional-indonesia",
+    "operation": "provinces.list",
+    "upstream": { "classification": "timeout" }
+  }
+}
+```
+
+`meta.upstream` selalu ada dan `null` untuk validation, authentication, metering, dataset lokal, serta not-found. Klasifikasi upstream: `timeout`, `unavailable`, atau `invalid_response`. Body upstream mentah dan error internal tidak diekspos.
+
+Code umum: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, dan `upstream_error`. Produk ekstraksi dokumen menambah code file seperti `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, dan `not_npwp`; lihat halamannya.
+
+## Migrasi dari respons lama
+
+- Baca record dari `data`, bukan root respons.
+- Baca atribusi, pagination, dan cache dari `meta.source`, `meta.pagination`, dan `meta.cache`.
+- Field pagination adalah `page`, `page_size`, dan `total_items`.
+- Ganti `Infogempa`/`DateTime` menjadi `info_gempa`/`date_time`.
+- Baca kegagalan dari `error.code` dan `error.message`; sertakan `meta.request_id` saat meminta bantuan.

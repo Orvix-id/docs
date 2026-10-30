@@ -1,0 +1,15 @@
+---
+title: National Holidays
+description: Hari libur nasional dan cuti bersama Indonesia.
+---
+
+# National Holidays
+
+| Endpoint | Operation | Keterangan |
+|---|---|---|
+| `GET /v1/holidays?year=2026` | `holidays.list` | Hari libur untuk satu tahun |
+| `GET /v1/holidays?year=2026&kind=cuti_bersama` | `holidays.list` | Filter `libur_nasional` atau `cuti_bersama` |
+| `GET /v1/holidays/2026-12-25` | `holidays.check` | Periksa tanggal `YYYY-MM-DD` |
+| `GET /v1/holidays/next?from=2026-10-01` | `holidays.next` | Libur pertama pada/setelah tanggal tersebut |
+
+`year` harus 2000–2100. Tahun valid yang belum dipublikasikan mengembalikan `dataset_not_available`, bukan daftar kosong.

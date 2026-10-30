@@ -1,0 +1,83 @@
+---
+title: CV Extractor
+description: Turn a CV in PDF into structured JSON. Rp300 per successful extraction.
+---
+
+# CV Extractor
+
+CV Extractor reads a CV in PDF and returns the candidate's profile, experience, and education as JSON.
+
+- **Endpoint:** `POST /v1/cv/extract` (operation `cv.extract`)
+- **Scope:** `cv:extract` or `api_store:all`
+- **Price:** Rp300 per successful extraction; every failure is refunded
+- **Input:** `multipart/form-data` with a PDF in the field `file`, at most 10 MB
+
+```bash
+curl https://api.orvix.id/v1/cv/extract \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -F "file=@cv.pdf"
+```
+
+Allow at least 120 seconds before timing out.
+
+## Response
+
+```json
+{
+  "data": {
+    "cv": {
+      "full_name": "<name>",
+      "title": "Backend Engineer",
+      "email": "<email>",
+      "phone": "<phone>",
+      "location": "Jakarta",
+      "summary": "<summary>",
+      "links": { "linkedin": "<url>", "github": "<url>" },
+      "skills": ["Rust", "PostgreSQL"],
+      "experience": [
+        {
+          "company": "<company>",
+          "title": "Software Engineer",
+          "start": "2022",
+          "end": null,
+          "current": true,
+          "highlights": ["<achievement>"]
+        }
+      ],
+      "education": [
+        { "institution": "<university>", "degree": "S.Kom", "major": "Informatika", "start": "2016", "end": "2020" }
+      ],
+      "extra": [{ "section": "Certifications", "items": ["<item>"] }]
+    },
+    "text": "<text read from the PDF>"
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "cv-extractor",
+    "operation": "cv.extract",
+    "source": null,
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+Missing values are `null`, `{}`, or `[]`. `links` maps a platform name in `snake_case` to the URL as written in the CV. `degree` is only set when a degree is written explicitly. `extra` keeps any CV section that does not fit the other fields, under its original heading. `text` is the text layer of the PDF. A scanned PDF without a text layer returns `422` and `empty_pdf_text`.
+
+## Errors
+
+| Status | Codes | Charged |
+|---|---|---|
+| `400` | `invalid_multipart`, `file_required`, `invalid_pdf` | No |
+| `402` | `insufficient_balance` | No |
+| `413` | `file_too_large` | No |
+| `415` | `multipart_required`, `unsupported_file_type` | No |
+| `422` | `empty_pdf_text`, `unreadable_pdf` | Refunded |
+| `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Refunded |
+| `503` | `not_configured`, `metering_error` | No |
+
+The balance is debited when the call is admitted. A successful extraction keeps the charge. Every other outcome after admission is refunded in full, including a connection that closes before the answer arrives.
+
+## Privacy
+
+Orvix does not store the uploaded PDF. Usage records keep the product, operation, status, and latency, not the CV content.

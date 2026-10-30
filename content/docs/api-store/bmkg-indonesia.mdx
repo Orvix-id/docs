@@ -1,0 +1,14 @@
+---
+title: BMKG Indonesia
+description: BMKG earthquake and weather data.
+---
+
+# BMKG Indonesia
+
+| Endpoint | Operation | Cache behavior |
+|---|---|---|
+| `GET /v1/bmkg/earthquakes/latest` | `bmkg.earthquakes` | 60 seconds |
+| `GET /v1/bmkg/earthquakes/felt` | `bmkg.felt` | 60 seconds |
+| `GET /v1/bmkg/weather?adm4=31.71.01.1001` | `bmkg.weather` | 1 hour; stale data may be served for up to 6 hours during an outage |
+
+`adm4` is a four-part numeric level-four region code. Cache state is explicit in `meta.cache`.

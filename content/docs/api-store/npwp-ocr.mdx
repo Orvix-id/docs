@@ -1,0 +1,103 @@
+---
+title: NPWP OCR
+description: Read the fields of an Indonesian NPWP card photo into JSON. Rp300 per successful extraction.
+---
+
+# NPWP OCR
+
+NPWP OCR reads a photo of an Indonesian taxpayer card (NPWP) and returns its fields as JSON, with facts derived from the NPWP number and NIK.
+
+- **Endpoint:** `POST /v1/npwp/extract` (operation `npwp.extract`)
+- **Scope:** `npwp:extract` or `api_store:all`
+- **Price:** Rp300 per successful extraction; every failure is refunded
+- **Input:** `multipart/form-data` with a JPEG, PNG, or WebP image in the field `file`, at most 10 MB
+
+```bash
+curl https://api.orvix.id/v1/npwp/extract \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -F "file=@npwp.jpg"
+```
+
+The request is the same as [KTP OCR](/api-store/ktp-ocr) apart from the path; its JavaScript and Python examples apply unchanged.
+
+## Response
+
+```json
+{
+  "data": {
+    "needs_review": false,
+    "warnings": [],
+    "koreksi": [],
+    "npwp": {
+      "nomor_npwp": "<15 or 16 digits>",
+      "nama": "<name>",
+      "nik": "<16 digits>",
+      "jalan": "<street>",
+      "rt": "001",
+      "rw": "002",
+      "kelurahan_desa": "<kelurahan>",
+      "kecamatan": "<kecamatan>",
+      "kabupaten_kota": "<regency>",
+      "provinsi": "<province>",
+      "kpp": "<tax office>"
+    },
+    "alamat_baris": ["<address line 1>", "<address line 2>"],
+    "detail": {
+      "npwp": {
+        "formatted": "<formatted number>",
+        "npwp_16": "<16 digits>",
+        "kode_kpp": "<3 digits>",
+        "status_cabang": "<branch code>",
+        "is_pusat": true,
+        "checksum_valid": true
+      },
+      "nik": {
+        "kode_wilayah": "<6 digits>",
+        "tanggal_lahir": "1990-01-31",
+        "jenis_kelamin": "LAKI-LAKI"
+      }
+    },
+    "referensi": {}
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "npwp-ocr",
+    "operation": "npwp.extract",
+    "source": null,
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+Every field in `data.npwp` is a string or `null`. `alamat_baris` holds the address lines as printed on the card. `detail.npwp` and `detail.nik` are derived from the numbers and are `null` when the number is missing or malformed.
+
+| Field | Meaning |
+|---|---|
+| `needs_review` | `true` when any warning was raised. Have a person check the result before using it. |
+| `warnings` | `{ "field", "code", "message" }` for each value that failed a format or consistency rule |
+| `koreksi` | `{ "field", "dari", "menjadi" }` for each address or KPP value corrected against the reference |
+| `referensi` | Region and NIK reference data used for those checks; `{}` when unavailable |
+
+NPWP OCR reads what the card shows. It is **not** a DJP lookup, tax status check, or KYC check.
+
+## Rejected image limit
+
+An image that is not an NPWP card (`not_npwp`) or cannot be read (`unreadable_image`) is refunded, but it still costs Orvix a model call. Each organization may have at most **8** such rejections per product in a rolling hour. After that, calls return `429` and `too_many_rejected_images` with a `Retry-After` header in seconds, until older rejections leave the one-hour window. A limited call is refused before the balance is touched. The count is separate from KTP OCR.
+
+## Errors
+
+| Status | Codes | Charged |
+|---|---|---|
+| `400` | `invalid_multipart`, `file_required`, `invalid_image` | No |
+| `402` | `insufficient_balance` | No |
+| `413` | `file_too_large` | No |
+| `415` | `multipart_required`, `unsupported_file_type` | No |
+| `422` | `not_npwp`, `unreadable_image` | Refunded |
+| `429` | `too_many_rejected_images` | No |
+| `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Refunded |
+| `503` | `not_configured`, `metering_error` | No |
+
+## Privacy
+
+Orvix does not store the uploaded image. It is held in memory for the extraction and sent to the vision model that reads it. Usage records keep the product, operation, status, and latency, not the extracted fields.

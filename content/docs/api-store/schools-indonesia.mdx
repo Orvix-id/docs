@@ -1,0 +1,16 @@
+---
+title: Indonesia Schools
+description: Search Indonesian schools by name or NPSN.
+---
+
+# Indonesia Schools
+
+`GET /v1/schools?page=1&size=20&search=Jakarta` uses operation `schools.list`.
+
+| Query | Default | Constraint |
+|---|---:|---|
+| `page` | `1` | 1–100,000 |
+| `size` | `20` | 1–100 |
+| `search` | empty | Maximum 100 characters |
+
+Pagination is returned in `meta.pagination`. `GET /v1/schools/{npsn}` uses `schools.detail`; NPSN must contain exactly eight ASCII letters or digits. A missing school returns `404` and `not_found`.

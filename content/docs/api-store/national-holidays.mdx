@@ -1,0 +1,15 @@
+---
+title: National Holidays
+description: Indonesian national holidays and collective leave days.
+---
+
+# National Holidays
+
+| Endpoint | Operation | Description |
+|---|---|---|
+| `GET /v1/holidays?year=2026` | `holidays.list` | Published holidays for a year |
+| `GET /v1/holidays?year=2026&kind=cuti_bersama` | `holidays.list` | Filter `libur_nasional` or `cuti_bersama` |
+| `GET /v1/holidays/2026-12-25` | `holidays.check` | Check a `YYYY-MM-DD` date |
+| `GET /v1/holidays/next?from=2026-10-01` | `holidays.next` | First holiday on or after a date |
+
+`year` must be 2000–2100. A valid but unpublished year returns `dataset_not_available`, not an empty list.

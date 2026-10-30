@@ -1,0 +1,171 @@
+---
+title: API Store
+description: Indonesian data and document extraction APIs (regions, schools, holidays, BMKG, KBLI, NIK, hospitals, universities, CV, KTP, NPWP) through one contract.
+---
+
+# API Store
+
+API Store exposes eleven Indonesian data and document extraction products under `https://api.orvix.id/v1`. Use an Orvix project API key with the product scope or `api_store:all`.
+
+```bash
+curl https://api.orvix.id/v1/regions/provinces \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## Products and scopes
+
+| Product | Product ID | Scope | Price | Source |
+|---|---|---|---|---|
+| [Regional Indonesia](/api-store/regional-indonesia) | `regional-indonesia` | `regions:read` | Free | API Wilayah Indonesia / Emsifa |
+| [Indonesia Schools](/api-store/schools-indonesia) | `schools-indonesia` | `schools:read` | Free | Kemendikdasmen |
+| [National Holidays](/api-store/national-holidays) | `national-holidays` | `holidays:read` | Free | SKB 3 Menteri |
+| [BMKG Indonesia](/api-store/bmkg-indonesia) | `bmkg-indonesia` | `bmkg:read` | Free | BMKG open data |
+| [KBLI 2025](/api-store/kbli-indonesia) | `kbli-indonesia` | `kbli:read` | Free | BPS KBLI 2025 |
+| [NIK Parser Indonesia](/api-store/nik-parser-indonesia) | `nik-parser-indonesia` | `nik:read` | Free | Orvix-hosted legacy administrative-code snapshot |
+| [Hospitals Indonesia](/api-store/hospitals-indonesia) | `hospitals-indonesia` | `hospitals:read` | Free, 1,000 calls/day | SumoPod API Services |
+| [Universities Indonesia](/api-store/universities-indonesia) | `universities-indonesia` | `universities:read` | Free, 1,000 calls/day | SumoPod API Services |
+| [CV Extractor](/api-store/cv-extractor) | `cv-extractor` | `cv:extract` | Rp300 per success | Orvix |
+| [KTP OCR](/api-store/ktp-ocr) | `ktp-ocr` | `ktp:extract` | Rp300 per success | Orvix |
+| [NPWP OCR](/api-store/npwp-ocr) | `npwp-ocr` | `npwp:extract` | Rp300 per success | Orvix |
+
+`api_store:all` grants every product above, but never AI, Coding, or Domains access.
+
+## Pricing and limits
+
+Paid products debit the organization balance when a call is admitted. A successful call keeps the charge; every failed call is refunded in full. A call without enough balance returns `402` and `insufficient_balance` before any work is done. Free products never touch the balance.
+
+Every call, free or paid, is metered into project usage records for product, operation, latency, and status observability. Pricing is server-managed; clients should not infer billing from the body.
+
+Hospitals Indonesia and Universities Indonesia share 1,000 calls per organization in a rolling 24 hours (`429`, `daily_limit_exceeded`). KTP OCR and NPWP OCR allow 8 rejected images per organization per hour (`429`, `too_many_rejected_images`, with `Retry-After`).
+
+## Code examples
+
+Each key needs the product scope listed above, or `api_store:all`. The examples cover the GET data products; see each product page for its own example. NIK endpoints use POST rather than the GET helper below so sensitive identifiers do not appear in URLs.
+
+### JavaScript
+
+```js
+const apiKey = process.env.ORVIX_API_KEY;
+
+async function apiStore(path, params = {}) {
+  const url = new URL(`https://api.orvix.id${path}`);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body;
+}
+
+const regions = await apiStore("/v1/regions/provinces");
+const schools = await apiStore("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const holidays = await apiStore("/v1/holidays", { year: 2026 });
+const weather = await apiStore("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await apiStore("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+```
+
+### TypeScript
+
+```ts
+type ApiStoreResponse<T> = {
+  data: T;
+  meta: {
+    request_id: string;
+    product: string;
+    operation: string;
+    source: unknown | null;
+    pagination: { page: number; page_size: number; total_items: number } | null;
+    cache: unknown | null;
+  };
+};
+
+async function apiStore<T>(path: string, params: Record<string, string | number> = {}): Promise<ApiStoreResponse<T>> {
+  const url = new URL(`https://api.orvix.id${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  return body as ApiStoreResponse<T>;
+}
+
+const provinces = await apiStore<Array<{ id: string; name: string }>>("/v1/regions/provinces");
+const schools = await apiStore<unknown[]>("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const holidays = await apiStore<unknown[]>("/v1/holidays", { year: 2026 });
+const weather = await apiStore<unknown>("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await apiStore<unknown[]>("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+```
+
+### Python
+
+```python
+import os
+import requests
+
+def api_store(path: str, params: dict | None = None) -> dict:
+    response = requests.get(
+        f"https://api.orvix.id{path}",
+        params=params or {},
+        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
+        timeout=15,
+    )
+    body = response.json()
+    if not response.ok:
+        error, meta = body.get("error", {}), body.get("meta", {})
+        raise RuntimeError(f"{error.get('code')}: {error.get('message')} ({meta.get('request_id')})")
+    return body
+
+regions = api_store("/v1/regions/provinces")
+schools = api_store("/v1/schools", {"search": "Jakarta", "page": 1, "size": 20})
+holidays = api_store("/v1/holidays", {"year": 2026})
+weather = api_store("/v1/bmkg/weather", {"adm4": "31.71.01.1001"})
+kbli = api_store("/v1/kbli/codes", {"q": "software", "page": 1, "size": 20})
+```
+
+## Success contract
+
+```json
+{
+  "data": [],
+  "meta": {
+    "request_id": "01...",
+    "product": "schools-indonesia",
+    "operation": "schools.list",
+    "source": null,
+    "pagination": { "page": 1, "page_size": 20, "total_items": 123 },
+    "cache": null
+  }
+}
+```
+
+`source`, `pagination`, and `cache` are always present and `null` when not applicable. The `x-request-id` header repeats `meta.request_id`.
+
+External keys are recursively normalized to `snake_case` while values remain unchanged. For example, BMKG `Infogempa` becomes `data.info_gempa`, and `DateTime` becomes `date_time`.
+
+## Error contract
+
+API Store errors differ from OpenAI-compatible AI errors:
+
+```json
+{
+  "error": { "code": "upstream_timeout", "message": "Region provider timed out" },
+  "meta": {
+    "request_id": "01...",
+    "product": "regional-indonesia",
+    "operation": "provinces.list",
+    "upstream": { "classification": "timeout" }
+  }
+}
+```
+
+`meta.upstream` is always present and is `null` for validation, authentication, metering, local-dataset, and not-found errors. Upstream classifications are `timeout`, `unavailable`, or `invalid_response`. Raw upstream bodies and internal errors are never exposed.
+
+Common codes: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, and `upstream_error`. Document extraction products add file codes such as `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, and `not_npwp`; see their pages.
+
+## Migrating from the legacy response
+
+- Read records from `data`, not the response root.
+- Read attribution, pagination, and cache state from `meta.source`, `meta.pagination`, and `meta.cache`.
+- Pagination fields are `page`, `page_size`, and `total_items`.
+- Replace external casing such as `Infogempa` and `DateTime` with `info_gempa` and `date_time`.
+- Read failures from `error.code` and `error.message`; include `meta.request_id` in support requests.

@@ -1,0 +1,48 @@
+---
+title: Hospitals Indonesia
+description: Directory of Indonesian hospitals with class, ownership, and region filters.
+---
+
+# Hospitals Indonesia
+
+- **Scope:** `hospitals:read` or `api_store:all`
+- **Price:** free
+- **Source:** SumoPod API Services (named in `meta.source`)
+- **Daily limit:** 1,000 calls per organization in a rolling 24 hours, shared with [Universities Indonesia](/api-store/universities-indonesia). Past that, calls return `429` and `daily_limit_exceeded`.
+
+| Endpoint | Operation | Description |
+|---|---|---|
+| `GET /v1/hospitals` | `hospitals.list` | Paginated hospital directory |
+| `GET /v1/hospitals/{code}` | `hospitals.detail` | One hospital by its Kemenkes code |
+
+```bash
+curl "https://api.orvix.id/v1/hospitals?search=Harapan&class=B&size=20" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## List parameters
+
+| Query | Default | Constraint |
+|---|---:|---|
+| `page` | `1` | 1–100,000 |
+| `size` | `20` | 1–100 |
+| `search` | empty | Maximum 100 characters |
+| `province_code`, `regency_code` | empty | Kemendagri region codes, as returned by [Regional Indonesia](/api-store/regional-indonesia) |
+| `class` | empty | `A`, `B`, `C`, or `D` |
+| `ownership`, `type`, `blu_status` | empty | Passed to the provider; maximum 64 characters each |
+
+Pagination is returned in `meta.pagination`.
+
+## Detail
+
+`code` is 1–32 letters, digits, dots, or dashes and must contain at least one letter or digit. An unknown code returns `404` and `not_found`.
+
+## Errors
+
+| Status | Code | Meaning |
+|---|---|---|
+| `400` | `invalid_request_error` | A parameter or code failed validation |
+| `404` | `not_found` | No hospital with that code |
+| `429` | `daily_limit_exceeded` | The organization used its 1,000 daily calls |
+| `502`, `504` | `upstream_error`, `upstream_timeout` | The provider failed or timed out |
+| `503` | `upstream_unavailable`, `upstream_not_configured`, `metering_error` | The provider is unavailable or out of quota, or usage metering is down |

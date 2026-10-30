@@ -1,0 +1,19 @@
+{
+  "title": "API Store",
+  "pages": [
+    "index",
+    "---Data---",
+    "regional-indonesia",
+    "schools-indonesia",
+    "national-holidays",
+    "bmkg-indonesia",
+    "kbli-indonesia",
+    "nik-parser-indonesia",
+    "hospitals-indonesia",
+    "universities-indonesia",
+    "---Document extraction---",
+    "cv-extractor",
+    "ktp-ocr",
+    "npwp-ocr"
+  ]
+}

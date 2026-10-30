@@ -1,0 +1,14 @@
+---
+title: BMKG Indonesia
+description: Data gempa dan cuaca BMKG.
+---
+
+# BMKG Indonesia
+
+| Endpoint | Operation | Cache |
+|---|---|---|
+| `GET /v1/bmkg/earthquakes/latest` | `bmkg.earthquakes` | 60 detik |
+| `GET /v1/bmkg/earthquakes/felt` | `bmkg.felt` | 60 detik |
+| `GET /v1/bmkg/weather?adm4=31.71.01.1001` | `bmkg.weather` | 1 jam; stale maksimal 6 jam saat upstream bermasalah |
+
+`adm4` harus kode wilayah level empat numerik dengan empat bagian. Status cache tersedia di `meta.cache`.

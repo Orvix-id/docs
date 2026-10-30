@@ -1,0 +1,10 @@
+---
+title: Indonesia Schools
+description: Cari sekolah Indonesia berdasarkan nama atau NPSN.
+---
+
+# Indonesia Schools
+
+`GET /v1/schools?page=1&size=20&search=Jakarta` memakai `schools.list`. `page` default 1 (maksimal 100.000), `size` default 20 (maksimal 100), dan `search` maksimal 100 karakter. Pagination berada di `meta.pagination`.
+
+`GET /v1/schools/{npsn}` memakai `schools.detail`. NPSN harus tepat delapan huruf/angka ASCII. Sekolah yang tidak ditemukan mengembalikan `404` dan `not_found`.

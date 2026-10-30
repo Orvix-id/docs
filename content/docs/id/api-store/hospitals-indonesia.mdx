@@ -1,0 +1,48 @@
+---
+title: Hospitals Indonesia
+description: Direktori rumah sakit Indonesia dengan filter kelas, kepemilikan, dan wilayah.
+---
+
+# Hospitals Indonesia
+
+- **Scope:** `hospitals:read` atau `api_store:all`
+- **Harga:** gratis
+- **Sumber:** SumoPod API Services (tercantum di `meta.source`)
+- **Batas harian:** 1.000 call per organisasi dalam 24 jam bergulir, dibagi dengan [Universities Indonesia](/id/api-store/universities-indonesia). Lewat dari itu, call mengembalikan `429` dan `daily_limit_exceeded`.
+
+| Endpoint | Operation | Deskripsi |
+|---|---|---|
+| `GET /v1/hospitals` | `hospitals.list` | Direktori rumah sakit dengan pagination |
+| `GET /v1/hospitals/{code}` | `hospitals.detail` | Satu rumah sakit berdasarkan kode Kemenkes |
+
+```bash
+curl "https://api.orvix.id/v1/hospitals?search=Harapan&class=B&size=20" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## Parameter list
+
+| Query | Default | Batasan |
+|---|---:|---|
+| `page` | `1` | 1–100.000 |
+| `size` | `20` | 1–100 |
+| `search` | kosong | Maksimal 100 karakter |
+| `province_code`, `regency_code` | kosong | Kode wilayah Kemendagri, sama seperti di [Regional Indonesia](/id/api-store/regional-indonesia) |
+| `class` | kosong | `A`, `B`, `C`, atau `D` |
+| `ownership`, `type`, `blu_status` | kosong | Diteruskan ke provider; maksimal 64 karakter masing-masing |
+
+Pagination berada di `meta.pagination`.
+
+## Detail
+
+`code` berisi 1–32 huruf, angka, titik, atau strip, dan minimal satu huruf atau angka. Kode yang tidak dikenal mengembalikan `404` dan `not_found`.
+
+## Error
+
+| Status | Code | Arti |
+|---|---|---|
+| `400` | `invalid_request_error` | Parameter atau kode gagal validasi |
+| `404` | `not_found` | Tidak ada rumah sakit dengan kode itu |
+| `429` | `daily_limit_exceeded` | Organisasi sudah memakai 1.000 call hariannya |
+| `502`, `504` | `upstream_error`, `upstream_timeout` | Provider gagal atau timeout |
+| `503` | `upstream_unavailable`, `upstream_not_configured`, `metering_error` | Provider tidak tersedia atau kuotanya habis, atau metering usage sedang mati |

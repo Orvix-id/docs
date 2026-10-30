@@ -1,0 +1,48 @@
+---
+title: Universities Indonesia
+description: Direktori perguruan tinggi Indonesia dengan filter kelompok dan wilayah.
+---
+
+# Universities Indonesia
+
+- **Scope:** `universities:read` atau `api_store:all`
+- **Harga:** gratis
+- **Sumber:** SumoPod API Services (tercantum di `meta.source`)
+- **Batas harian:** 1.000 call per organisasi dalam 24 jam bergulir, dibagi dengan [Hospitals Indonesia](/id/api-store/hospitals-indonesia). Lewat dari itu, call mengembalikan `429` dan `daily_limit_exceeded`.
+
+| Endpoint | Operation | Deskripsi |
+|---|---|---|
+| `GET /v1/universities` | `universities.list` | Direktori perguruan tinggi dengan pagination |
+| `GET /v1/universities/{id}` | `universities.detail` | Satu perguruan tinggi berdasarkan ID provider |
+
+```bash
+curl "https://api.orvix.id/v1/universities?search=Indonesia&group=PTN&size=20" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+```
+
+## Parameter list
+
+| Query | Default | Batasan |
+|---|---:|---|
+| `page` | `1` | 1–100.000 |
+| `size` | `20` | 1–100 |
+| `search` | kosong | Maksimal 100 karakter |
+| `province_code`, `regency_code` | kosong | Kode wilayah Kemendagri, sama seperti di [Regional Indonesia](/id/api-store/regional-indonesia) |
+| `group` | kosong | `PTN` (negeri), `PTS` (swasta), `PTA` (agama), atau `PTK` (kedinasan) |
+| `type` | kosong | Diteruskan ke provider; maksimal 64 karakter |
+
+Pagination berada di `meta.pagination`.
+
+## Detail
+
+`id` berisi 1–12 digit. ID ini milik dataset provider, **bukan** kode perguruan tinggi PDDikti, dan bisa berubah saat provider memuat ulang datanya. Jangan simpan sebagai key permanen. ID yang tidak dikenal mengembalikan `404` dan `not_found`.
+
+## Error
+
+| Status | Code | Arti |
+|---|---|---|
+| `400` | `invalid_request_error` | Parameter atau ID gagal validasi |
+| `404` | `not_found` | Tidak ada perguruan tinggi dengan ID itu |
+| `429` | `daily_limit_exceeded` | Organisasi sudah memakai 1.000 call hariannya |
+| `502`, `504` | `upstream_error`, `upstream_timeout` | Provider gagal atau timeout |
+| `503` | `upstream_unavailable`, `upstream_not_configured`, `metering_error` | Provider tidak tersedia atau kuotanya habis, atau metering usage sedang mati |

@@ -1,0 +1,83 @@
+---
+title: CV Extractor
+description: Ubah CV PDF menjadi JSON terstruktur. Rp300 per ekstraksi sukses.
+---
+
+# CV Extractor
+
+CV Extractor membaca CV berformat PDF dan mengembalikan profil, pengalaman, dan pendidikan kandidat sebagai JSON.
+
+- **Endpoint:** `POST /v1/cv/extract` (operation `cv.extract`)
+- **Scope:** `cv:extract` atau `api_store:all`
+- **Harga:** Rp300 per ekstraksi sukses; setiap kegagalan di-refund
+- **Input:** `multipart/form-data` dengan PDF di field `file`, maksimal 10 MB
+
+```bash
+curl https://api.orvix.id/v1/cv/extract \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -F "file=@cv.pdf"
+```
+
+Beri timeout minimal 120 detik.
+
+## Respons
+
+```json
+{
+  "data": {
+    "cv": {
+      "full_name": "<nama>",
+      "title": "Backend Engineer",
+      "email": "<email>",
+      "phone": "<telepon>",
+      "location": "Jakarta",
+      "summary": "<ringkasan>",
+      "links": { "linkedin": "<url>", "github": "<url>" },
+      "skills": ["Rust", "PostgreSQL"],
+      "experience": [
+        {
+          "company": "<perusahaan>",
+          "title": "Software Engineer",
+          "start": "2022",
+          "end": null,
+          "current": true,
+          "highlights": ["<pencapaian>"]
+        }
+      ],
+      "education": [
+        { "institution": "<universitas>", "degree": "S.Kom", "major": "Informatika", "start": "2016", "end": "2020" }
+      ],
+      "extra": [{ "section": "Sertifikasi", "items": ["<item>"] }]
+    },
+    "text": "<teks yang dibaca dari PDF>"
+  },
+  "meta": {
+    "request_id": "01...",
+    "product": "cv-extractor",
+    "operation": "cv.extract",
+    "source": null,
+    "pagination": null,
+    "cache": null
+  }
+}
+```
+
+Nilai yang tidak ada berupa `null`, `{}`, atau `[]`. `links` memetakan nama platform dalam `snake_case` ke URL seperti tertulis di CV. `degree` hanya diisi jika gelar tertulis eksplisit. `extra` menyimpan section CV yang tidak masuk field lain, dengan judul aslinya. `text` adalah layer teks PDF. PDF hasil scan tanpa layer teks mengembalikan `422` dan `empty_pdf_text`.
+
+## Error
+
+| Status | Code | Ditagih |
+|---|---|---|
+| `400` | `invalid_multipart`, `file_required`, `invalid_pdf` | Tidak |
+| `402` | `insufficient_balance` | Tidak |
+| `413` | `file_too_large` | Tidak |
+| `415` | `multipart_required`, `unsupported_file_type` | Tidak |
+| `422` | `empty_pdf_text`, `unreadable_pdf` | Di-refund |
+| `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Di-refund |
+| `503` | `not_configured`, `metering_error` | Tidak |
+
+Saldo dipotong saat call diterima. Ekstraksi sukses tetap ditagih. Semua hasil lain setelah call diterima di-refund penuh, termasuk koneksi yang tertutup sebelum jawaban datang.
+
+## Privasi
+
+Orvix tidak menyimpan PDF yang di-upload. Usage record menyimpan produk, operation, status, dan latensi, bukan isi CV.
