@@ -40,32 +40,108 @@ Hospitals Indonesia and Universities Indonesia share 1,000 calls per organizatio
 
 ## Code examples
 
-Each key needs the product scope listed above, or `api_store:all`. The examples cover the GET data products; see each product page for its own example. NIK endpoints use POST rather than the GET helper below so sensitive identifiers do not appear in URLs.
+Each key needs the product scope listed above, or `api_store:all`. Every example uses one small client with three calls:
+
+- `get` for the data products, with filters in the query string.
+- `postJson` for NIK Parser. NIK values go in the body so they never appear in URLs or access logs. The examples read them from an environment variable.
+- `upload` for CV Extractor, KTP OCR, and NPWP OCR, as `multipart/form-data` in a field named `file`. Extraction can take longer, so uploads get a 120-second timeout.
+
+Paid calls (`cv`, `ktp`, `npwp`) cost Rp300 each when they succeed. See each product page for its parameters and response fields.
+
+### cURL
+
+```bash
+# GET data products
+curl "https://api.orvix.id/v1/schools?search=Jakarta&page=1&size=20" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+
+curl "https://api.orvix.id/v1/hospitals?class=B&size=20" \
+  -H "Authorization: Bearer $ORVIX_API_KEY"
+
+# NIK Parser: JSON body, never the URL
+curl https://api.orvix.id/v1/nik/parse \
+  -X POST \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data "{\"nik\":\"$NIK\"}"
+
+# Document extraction: multipart field "file"
+curl https://api.orvix.id/v1/ktp/extract \
+  -H "Authorization: Bearer $ORVIX_API_KEY" \
+  -F "file=@ktp.jpg"
+```
 
 ### JavaScript
 
 ```js
-const apiKey = process.env.ORVIX_API_KEY;
+import { readFile } from "node:fs/promises";
 
-async function apiStore(path, params = {}) {
-  const url = new URL(`https://api.orvix.id${path}`);
-  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
+const BASE_URL = "https://api.orvix.id";
+const auth = { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` };
+
+async function call(path, init = {}, timeoutMs = 15_000) {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: { ...auth, ...init.headers },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
   const body = await response.json();
-  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  if (!response.ok) {
+    // Product errors carry error.code and meta.request_id; key and scope
+    // failures use the AI shape with error.type and no meta.
+    const code = body.error?.code ?? body.error?.type;
+    const requestId = body.meta?.request_id ?? "no request id";
+    const retry = response.headers.get("retry-after");
+    throw new Error(
+      `${response.status} ${code}: ${body.error?.message} (${requestId})` +
+        (retry ? `, retry after ${retry}s` : ""),
+    );
+  }
   return body;
 }
 
-const regions = await apiStore("/v1/regions/provinces");
-const schools = await apiStore("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
-const holidays = await apiStore("/v1/holidays", { year: 2026 });
-const weather = await apiStore("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
-const kbli = await apiStore("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+const get = (path, params = {}) =>
+  call(`${path}?${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]))}`);
+
+const postJson = (path, json) =>
+  call(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(json),
+  });
+
+async function upload(path, filePath) {
+  const form = new FormData();
+  form.append("file", new Blob([await readFile(filePath)]), filePath.split("/").pop());
+  return call(path, { method: "POST", body: form }, 120_000);
+}
+
+// Free data products
+const regions = await get("/v1/regions/provinces");
+const schools = await get("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const holidays = await get("/v1/holidays", { year: 2026 });
+const earthquake = await get("/v1/bmkg/earthquakes/latest");
+const weather = await get("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await get("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+const hospitals = await get("/v1/hospitals", { search: "Harapan", class: "B", size: 20 });
+const universities = await get("/v1/universities", { group: "PTN", size: 20 });
+
+// NIK Parser (free, POST)
+const nik = await postJson("/v1/nik/parse", { nik: process.env.NIK });
+const nikBatch = await postJson("/v1/nik/parse-batch", { niks: [process.env.NIK, "invalid"] });
+
+// Document extraction (Rp300 per success)
+const cv = await upload("/v1/cv/extract", "cv.pdf");
+const ktp = await upload("/v1/ktp/extract", "ktp.jpg");
+const npwp = await upload("/v1/npwp/extract", "npwp.jpg");
+if (ktp.data.needs_review) console.warn(ktp.data.warnings);
 ```
 
 ### TypeScript
 
 ```ts
+import { readFile } from "node:fs/promises";
+
 type ApiStoreResponse<T> = {
   data: T;
   meta: {
@@ -78,48 +154,175 @@ type ApiStoreResponse<T> = {
   };
 };
 
-async function apiStore<T>(path: string, params: Record<string, string | number> = {}): Promise<ApiStoreResponse<T>> {
-  const url = new URL(`https://api.orvix.id${path}`);
-  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}` },
+// Product errors carry error.code and meta; key and scope failures use the
+// AI shape with error.type and no meta.
+type ApiStoreError = {
+  error: { code?: string; type?: string; message: string };
+  meta?: { request_id: string; product: string; operation: string; upstream: unknown | null };
+};
+
+type Warning = { field: string; code: string; message: string };
+type Correction = { field: string; dari: string | null; menjadi: string | null };
+type Review = {
+  needs_review: boolean;
+  warnings: Warning[];
+  koreksi: Correction[];
+  referensi: Record<string, unknown>;
+};
+type Ktp = Review & { ktp: Record<string, string | null> };
+type Npwp = Review & {
+  npwp: Record<string, string | null>;
+  alamat_baris: string[];
+  detail: { npwp: Record<string, unknown> | null; nik: Record<string, unknown> | null };
+};
+type Cv = { cv: Record<string, unknown>; text: string };
+type NikResult = { structurally_valid: boolean; provinsi: string | null; kota_kabupaten: string | null; issues: unknown[] };
+
+const BASE_URL = "https://api.orvix.id";
+
+class ApiStoreRequestError extends Error {
+  readonly code: string;
+
+  constructor(
+    readonly status: number,
+    readonly body: ApiStoreError,
+    readonly retryAfterSeconds: number | null,
+  ) {
+    const code = body.error.code ?? body.error.type ?? "unknown_error";
+    super(`${status} ${code}: ${body.error.message} (${body.meta?.request_id ?? "no request id"})`);
+    this.code = code;
+  }
+}
+
+async function call<T>(path: string, init: RequestInit = {}, timeoutMs = 15_000): Promise<ApiStoreResponse<T>> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${process.env.ORVIX_API_KEY}`, ...init.headers },
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const body = await response.json();
-  if (!response.ok) throw new Error(`${body.error?.code}: ${body.error?.message} (${body.meta?.request_id})`);
+  if (!response.ok) {
+    const retry = response.headers.get("retry-after");
+    throw new ApiStoreRequestError(response.status, body as ApiStoreError, retry ? Number(retry) : null);
+  }
   return body as ApiStoreResponse<T>;
 }
 
-const provinces = await apiStore<Array<{ id: string; name: string }>>("/v1/regions/provinces");
-const schools = await apiStore<unknown[]>("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
-const holidays = await apiStore<unknown[]>("/v1/holidays", { year: 2026 });
-const weather = await apiStore<unknown>("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
-const kbli = await apiStore<unknown[]>("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+const get = <T>(path: string, params: Record<string, string | number> = {}) =>
+  call<T>(`${path}?${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]))}`);
+
+const postJson = <T>(path: string, json: unknown) =>
+  call<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(json),
+  });
+
+async function upload<T>(path: string, filePath: string) {
+  const form = new FormData();
+  form.append("file", new Blob([await readFile(filePath)]), filePath.split("/").pop());
+  return call<T>(path, { method: "POST", body: form }, 120_000);
+}
+
+const regions = await get<Array<{ id: string; name: string }>>("/v1/regions/provinces");
+const schools = await get<unknown[]>("/v1/schools", { search: "Jakarta", page: 1, size: 20 });
+const holidays = await get<unknown[]>("/v1/holidays", { year: 2026 });
+const earthquake = await get<unknown>("/v1/bmkg/earthquakes/latest");
+const weather = await get<unknown>("/v1/bmkg/weather", { adm4: "31.71.01.1001" });
+const kbli = await get<unknown[]>("/v1/kbli/codes", { q: "software", page: 1, size: 20 });
+const hospitals = await get<unknown[]>("/v1/hospitals", { search: "Harapan", class: "B", size: 20 });
+const universities = await get<unknown[]>("/v1/universities", { group: "PTN", size: 20 });
+
+const nik = await postJson<NikResult>("/v1/nik/parse", { nik: process.env.NIK });
+const nikBatch = await postJson<Array<{ data: NikResult | null; error: { code: string; message: string } | null }>>(
+  "/v1/nik/parse-batch",
+  { niks: [process.env.NIK, "invalid"] },
+);
+
+const cv = await upload<Cv>("/v1/cv/extract", "cv.pdf");
+const npwp = await upload<Npwp>("/v1/npwp/extract", "npwp.jpg");
+try {
+  const ktp = await upload<Ktp>("/v1/ktp/extract", "ktp.jpg");
+  if (ktp.data.needs_review) console.warn(ktp.data.warnings);
+} catch (error) {
+  if (error instanceof ApiStoreRequestError && error.code === "too_many_rejected_images") {
+    console.warn(`Too many rejected images, retry after ${error.retryAfterSeconds}s`);
+  } else {
+    throw error;
+  }
+}
 ```
 
 ### Python
 
 ```python
 import os
+from pathlib import Path
+
 import requests
 
-def api_store(path: str, params: dict | None = None) -> dict:
-    response = requests.get(
-        f"https://api.orvix.id{path}",
-        params=params or {},
-        headers={"Authorization": f"Bearer {os.environ['ORVIX_API_KEY']}"},
-        timeout=15,
-    )
-    body = response.json()
-    if not response.ok:
-        error, meta = body.get("error", {}), body.get("meta", {})
-        raise RuntimeError(f"{error.get('code')}: {error.get('message')} ({meta.get('request_id')})")
-    return body
+BASE_URL = "https://api.orvix.id"
+session = requests.Session()
+session.headers["Authorization"] = f"Bearer {os.environ['ORVIX_API_KEY']}"
 
-regions = api_store("/v1/regions/provinces")
-schools = api_store("/v1/schools", {"search": "Jakarta", "page": 1, "size": 20})
-holidays = api_store("/v1/holidays", {"year": 2026})
-weather = api_store("/v1/bmkg/weather", {"adm4": "31.71.01.1001"})
-kbli = api_store("/v1/kbli/codes", {"q": "software", "page": 1, "size": 20})
+
+class ApiStoreError(RuntimeError):
+    def __init__(self, response: requests.Response):
+        body = response.json()
+        error, meta = body.get("error", {}), body.get("meta") or {}
+        self.status = response.status_code
+        # Product errors carry error.code and meta; key and scope failures
+        # use the AI shape with error.type and no meta.
+        self.code = error.get("code") or error.get("type")
+        self.retry_after = response.headers.get("Retry-After")
+        super().__init__(f"{self.status} {self.code}: {error.get('message')} ({meta.get('request_id', 'no request id')})")
+
+
+def _check(response: requests.Response) -> dict:
+    if not response.ok:
+        raise ApiStoreError(response)
+    return response.json()
+
+
+def get(path: str, params: dict | None = None) -> dict:
+    return _check(session.get(f"{BASE_URL}{path}", params=params or {}, timeout=15))
+
+
+def post_json(path: str, payload: dict) -> dict:
+    return _check(session.post(f"{BASE_URL}{path}", json=payload, timeout=15))
+
+
+def upload(path: str, file_path: str) -> dict:
+    with open(file_path, "rb") as file:
+        files = {"file": (Path(file_path).name, file)}
+        return _check(session.post(f"{BASE_URL}{path}", files=files, timeout=120))
+
+
+# Free data products
+regions = get("/v1/regions/provinces")
+schools = get("/v1/schools", {"search": "Jakarta", "page": 1, "size": 20})
+holidays = get("/v1/holidays", {"year": 2026})
+earthquake = get("/v1/bmkg/earthquakes/latest")
+weather = get("/v1/bmkg/weather", {"adm4": "31.71.01.1001"})
+kbli = get("/v1/kbli/codes", {"q": "software", "page": 1, "size": 20})
+hospitals = get("/v1/hospitals", {"search": "Harapan", "class": "B", "size": 20})
+universities = get("/v1/universities", {"group": "PTN", "size": 20})
+
+# NIK Parser (free, POST)
+nik = post_json("/v1/nik/parse", {"nik": os.environ["NIK"]})
+nik_batch = post_json("/v1/nik/parse-batch", {"niks": [os.environ["NIK"], "invalid"]})
+
+# Document extraction (Rp300 per success)
+cv = upload("/v1/cv/extract", "cv.pdf")
+npwp = upload("/v1/npwp/extract", "npwp.jpg")
+try:
+    ktp = upload("/v1/ktp/extract", "ktp.jpg")
+    if ktp["data"]["needs_review"]:
+        print(ktp["data"]["warnings"])
+except ApiStoreError as error:
+    if error.code != "too_many_rejected_images":
+        raise
+    print(f"Too many rejected images, retry after {error.retry_after}s")
 ```
 
 ## Success contract
@@ -158,7 +361,15 @@ API Store errors differ from OpenAI-compatible AI errors:
 }
 ```
 
-`meta.upstream` is always present and is `null` for validation, authentication, metering, local-dataset, and not-found errors. Upstream classifications are `timeout`, `unavailable`, or `invalid_response`. Raw upstream bodies and internal errors are never exposed.
+`meta.upstream` is always present and is `null` for validation, metering, local-dataset, and not-found errors. Upstream classifications are `timeout`, `unavailable`, or `invalid_response`. Raw upstream bodies and internal errors are never exposed.
+
+Key and scope failures are answered before any product runs, in the OpenAI-compatible shape used by AI endpoints, without `code` or `meta`:
+
+```json
+{ "error": { "message": "Invalid API key prefix", "type": "authentication_error" } }
+```
+
+A missing, unknown, or revoked key, or a key without the product scope, returns `401` and `authentication_error`. When the key cannot be checked for a moment, the API returns `503` and `server_error` with `Retry-After`. Read `error.code`, and fall back to `error.type`, as the examples above do.
 
 Common codes: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, and `upstream_error`. Document extraction products add file codes such as `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, and `not_npwp`; see their pages.
 
