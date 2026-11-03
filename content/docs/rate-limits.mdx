@@ -9,7 +9,7 @@ Each API key has two configurable limits:
 
 | Limit | Unit | Behavior |
 |---|---|---|
-| **Rate limit** | Requests per minute | Sliding 60-second window per process |
+| **Rate limit** | Requests per minute | One-minute window per key, shared across API nodes |
 | **Monthly spend limit** | USD | Cumulative spend for the current calendar month |
 
 Both limits are set per key from the [Orvix Platform](https://platform.orvix.id/api-keys).
@@ -44,10 +44,25 @@ Also returns **429**.
 
 ## Notes
 
-- **Rate limits are per-process** — if you run multiple API instances, the effective rate limit is multiplied by the number of instances.
+- **Rate limits are shared across API nodes** — the window lives in Redis, so the limit holds however requests are spread. If Redis is unreachable, each node falls back to its own window for a short time.
 - **Spend limits use a 30-second cache** — after a request, spend tracking may take up to 30 seconds to reflect the latest usage.
 - If the spend lookup fails, the request is **allowed through** (fail-open).
 - There is also a global rate limiter on the API gateway that applies to all endpoints.
+
+## API Store
+
+API Store products have their own per-key window, separate from AI traffic on the same key: **60 requests per minute** for free products and **30 per minute** for paid ones, counted separately. A rate limit set on the key replaces both defaults.
+
+```json
+{
+  "error": {
+    "message": "API Store rate limit of 60 requests per minute exceeded for this key",
+    "type": "rate_limit_exceeded"
+  }
+}
+```
+
+Returns **429** with a `Retry-After` header (seconds until the next window). Some products add their own limits; see [API Store](/api-store#pricing-and-limits).
 
 ## Best practices
 

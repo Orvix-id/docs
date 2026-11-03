@@ -108,6 +108,10 @@ Gambar yang bukan KTP (`not_ktp`) atau tidak terbaca (`unreadable_image`) di-ref
 
 Supaya tidak kena batas, minta pengguna mengirim foto kartu yang terang dan tidak terpotong, lalu cek jenis dan ukuran file sebelum upload.
 
+## Ekstraksi yang sedang berjalan
+
+Setiap organisasi boleh punya maksimal **10** ekstraksi yang sedang berjalan per produk pada saat yang sama. Call berikutnya mengembalikan `429` dan `too_many_concurrent_requests` dengan `Retry-After: 5`, sebelum saldo disentuh. Tunggu call sebelumnya selesai, atau antrekan upload di sisi Anda.
+
 ## Error
 
 | Status | Code | Ditagih |
@@ -117,7 +121,7 @@ Supaya tidak kena batas, minta pengguna mengirim foto kartu yang terang dan tida
 | `413` | `file_too_large` | Tidak |
 | `415` | `multipart_required`, `unsupported_file_type` | Tidak |
 | `422` | `not_ktp`, `unreadable_image` | Di-refund |
-| `429` | `too_many_rejected_images` | Tidak |
+| `429` | `too_many_rejected_images`, `too_many_concurrent_requests`, `rate_limit_exceeded` | Tidak |
 | `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Di-refund |
 | `503` | `not_configured`, `metering_error` | Tidak |
 
