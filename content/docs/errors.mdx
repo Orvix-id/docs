@@ -26,6 +26,7 @@ The AI router returns errors in the OpenAI error format:
 | 402 | `insufficient_credits` | Not enough Orvix Credits (chat) or Image Credits (`/v1/images/generations`) |
 | 403 | `permission_error` | API key not allowed for the requested funding source |
 | 429 | `rate_limit_error` | Per-key rate limit or monthly spend limit exceeded |
+| 429 | `rate_limit_exceeded` | API Store per-key rate limit exceeded (see [Rate Limits](/rate-limits#api-store)) |
 | 502 | `server_error` | All upstream provider routes failed |
 | 503 | `server_error` | AI router not configured, Coding Plan catalogue empty, or no healthy evaluator route |
 | 500 | `server_error` | Internal server error |

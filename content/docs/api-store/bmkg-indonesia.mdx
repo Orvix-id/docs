@@ -11,4 +11,4 @@ description: BMKG earthquake and weather data.
 | `GET /v1/bmkg/earthquakes/felt` | `bmkg.felt` | 60 seconds |
 | `GET /v1/bmkg/weather?adm4=31.71.01.1001` | `bmkg.weather` | 1 hour; stale data may be served for up to 6 hours during an outage |
 
-`adm4` is a four-part numeric level-four region code. Cache state is explicit in `meta.cache`.
+`adm4` is a Kemendagri village code in the form `NN.NN.NN.NNNN` (2, 2, 2, and 4 digits, for example `31.71.03.1001`); any other form returns `400`. Cache state is explicit in `meta.cache`.

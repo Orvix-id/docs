@@ -108,6 +108,10 @@ An image that is not a KTP (`not_ktp`) or cannot be read (`unreadable_image`) is
 
 To stay under the limit, ask users for a well-lit, uncropped photo of the card and check the file type and size before uploading.
 
+## Extractions in progress
+
+Each organization may have at most **10** extractions in progress per product at once. Another call returns `429` and `too_many_concurrent_requests` with `Retry-After: 5`, before the balance is touched. Wait for earlier calls to finish, or queue uploads on your side.
+
 ## Errors
 
 | Status | Codes | Charged |
@@ -117,7 +121,7 @@ To stay under the limit, ask users for a well-lit, uncropped photo of the card a
 | `413` | `file_too_large` | No |
 | `415` | `multipart_required`, `unsupported_file_type` | No |
 | `422` | `not_ktp`, `unreadable_image` | Refunded |
-| `429` | `too_many_rejected_images` | No |
+| `429` | `too_many_rejected_images`, `too_many_concurrent_requests`, `rate_limit_exceeded` | No |
 | `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Refunded |
 | `503` | `not_configured`, `metering_error` | No |
 

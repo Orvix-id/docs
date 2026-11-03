@@ -26,6 +26,7 @@ AI router mengembalikan error dalam format OpenAI:
 | 402 | `insufficient_credits` | Orvix Credits (chat) atau Image Credits (`/v1/images/generations`) tidak cukup |
 | 403 | `permission_error` | API key tidak diizinkan untuk sumber pendanaan yang diminta |
 | 429 | `rate_limit_error` | Rate limit per-key atau limit belanja bulanan terlampaui |
+| 429 | `rate_limit_exceeded` | Rate limit per-key API Store terlampaui (lihat [Rate Limit](/id/rate-limits#api-store)) |
 | 502 | `server_error` | Semua rute provider upstream gagal |
 | 503 | `server_error` | AI router belum dikonfigurasikan, katalog Coding Plan kosong, atau tidak ada rute evaluator yang sehat |
 | 500 | `server_error` | Internal server error |

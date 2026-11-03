@@ -36,7 +36,9 @@ Paid products debit the organization balance when a call is admitted. A successf
 
 Every call, free or paid, is metered into project usage records for product, operation, latency, and status observability. Pricing is server-managed; clients should not infer billing from the body.
 
-Hospitals Indonesia and Universities Indonesia share 1,000 calls per organization in a rolling 24 hours (`429`, `daily_limit_exceeded`). KTP OCR and NPWP OCR allow 8 rejected images per organization per hour (`429`, `too_many_rejected_images`, with `Retry-After`).
+Each API key may send **60 requests per minute** to free products and **30 per minute** to paid ones (CV Extractor, KTP OCR, NPWP OCR). The two are counted separately, and apart from the key's AI traffic, across every API node. Past the limit, calls return `429` with `error.type` `rate_limit_exceeded` and a `Retry-After` header in seconds; a limited call writes no usage record and touches no balance. A rate limit set on the key in [API Keys](https://platform.orvix.id/api-keys) replaces both defaults.
+
+Hospitals Indonesia and Universities Indonesia share 1,000 calls per organization in a rolling 24 hours (`429`, `daily_limit_exceeded`). KTP OCR and NPWP OCR allow 8 rejected images per organization per hour (`429`, `too_many_rejected_images`, with `Retry-After`) and 10 extractions in progress per organization per product (`429`, `too_many_concurrent_requests`, with `Retry-After`).
 
 ## Code examples
 
@@ -371,7 +373,7 @@ Key and scope failures are answered before any product runs, in the OpenAI-compa
 
 A missing, unknown, or revoked key, or a key without the product scope, returns `401` and `authentication_error`. When the key cannot be checked for a moment, the API returns `503` and `server_error` with `Retry-After`. Read `error.code`, and fall back to `error.type`, as the examples above do.
 
-Common codes: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, and `upstream_error`. Document extraction products add file codes such as `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, and `not_npwp`; see their pages.
+Common codes: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `too_many_concurrent_requests`, `rate_limit_exceeded` (as `error.type`), `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, and `upstream_error`. Document extraction products add file codes such as `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, and `not_npwp`; see their pages.
 
 ## Migrating from the legacy response
 

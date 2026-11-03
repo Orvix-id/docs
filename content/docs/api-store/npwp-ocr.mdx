@@ -85,6 +85,10 @@ NPWP OCR reads what the card shows. It is **not** a DJP lookup, tax status check
 
 An image that is not an NPWP card (`not_npwp`) or cannot be read (`unreadable_image`) is refunded, but it still costs Orvix a model call. Each organization may have at most **8** such rejections per product in a rolling hour. After that, calls return `429` and `too_many_rejected_images` with a `Retry-After` header in seconds, until older rejections leave the one-hour window. A limited call is refused before the balance is touched. The count is separate from KTP OCR.
 
+## Extractions in progress
+
+Each organization may have at most **10** extractions in progress per product at once. Another call returns `429` and `too_many_concurrent_requests` with `Retry-After: 5`, before the balance is touched. Wait for earlier calls to finish, or queue uploads on your side.
+
 ## Errors
 
 | Status | Codes | Charged |
@@ -94,7 +98,7 @@ An image that is not an NPWP card (`not_npwp`) or cannot be read (`unreadable_im
 | `413` | `file_too_large` | No |
 | `415` | `multipart_required`, `unsupported_file_type` | No |
 | `422` | `not_npwp`, `unreadable_image` | Refunded |
-| `429` | `too_many_rejected_images` | No |
+| `429` | `too_many_rejected_images`, `too_many_concurrent_requests`, `rate_limit_exceeded` | No |
 | `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Refunded |
 | `503` | `not_configured`, `metering_error` | No |
 

@@ -36,7 +36,9 @@ Produk berbayar memotong saldo organisasi saat call diterima. Call yang sukses t
 
 Setiap call, gratis maupun berbayar, dicatat ke usage project agar produk, operation, latensi, dan status dapat diobservasi. Harga dikelola server; client tidak boleh menyimpulkan billing dari body.
 
-Hospitals Indonesia dan Universities Indonesia berbagi 1.000 call per organisasi dalam 24 jam bergulir (`429`, `daily_limit_exceeded`). KTP OCR dan NPWP OCR mengizinkan 8 gambar yang ditolak per organisasi per jam (`429`, `too_many_rejected_images`, dengan `Retry-After`).
+Setiap API key boleh mengirim **60 request per menit** ke produk gratis dan **30 per menit** ke produk berbayar (CV Extractor, KTP OCR, NPWP OCR). Keduanya dihitung terpisah, juga terpisah dari trafik AI key itu, dan berlaku gabungan di semua node API. Lewat batas, call mengembalikan `429` dengan `error.type` `rate_limit_exceeded` dan header `Retry-After` dalam detik; call yang kena batas tidak menulis catatan usage dan tidak menyentuh saldo. Rate limit yang diatur pada key di [API Keys](https://platform.orvix.id/api-keys) menggantikan kedua angka default ini.
+
+Hospitals Indonesia dan Universities Indonesia berbagi 1.000 call per organisasi dalam 24 jam bergulir (`429`, `daily_limit_exceeded`). KTP OCR dan NPWP OCR mengizinkan 8 gambar yang ditolak per organisasi per jam (`429`, `too_many_rejected_images`, dengan `Retry-After`) dan 10 ekstraksi yang sedang berjalan per organisasi per produk (`429`, `too_many_concurrent_requests`, dengan `Retry-After`).
 
 ## Contoh kode
 
@@ -367,7 +369,7 @@ Kegagalan key dan scope dijawab sebelum produk berjalan, dengan bentuk OpenAI-co
 
 Key yang tidak ada, tidak dikenal, dicabut, atau tidak punya scope produk mengembalikan `401` dan `authentication_error`. Jika key sesaat tidak bisa dicek, API mengembalikan `503` dan `server_error` dengan `Retry-After`. Baca `error.code`, lalu `error.type` sebagai cadangan, seperti contoh di atas.
 
-Code umum: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, dan `upstream_error`. Produk ekstraksi dokumen menambah code file seperti `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, dan `not_npwp`; lihat halamannya.
+Code umum: `invalid_request_error`, `insufficient_balance`, `metering_error`, `not_found`, `dataset_not_available`, `dataset_error`, `daily_limit_exceeded`, `too_many_rejected_images`, `too_many_concurrent_requests`, `rate_limit_exceeded` (sebagai `error.type`), `upstream_timeout`, `upstream_unavailable`, `upstream_not_configured`, dan `upstream_error`. Produk ekstraksi dokumen menambah code file seperti `file_required`, `file_too_large`, `unsupported_file_type`, `not_ktp`, dan `not_npwp`; lihat halamannya.
 
 ## Migrasi dari respons lama
 

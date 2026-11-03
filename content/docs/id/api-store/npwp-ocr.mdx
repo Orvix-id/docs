@@ -85,6 +85,10 @@ NPWP OCR membaca apa yang tertulis di kartu. Ini **bukan** lookup DJP, cek statu
 
 Gambar yang bukan kartu NPWP (`not_npwp`) atau tidak terbaca (`unreadable_image`) di-refund, tetapi tetap memakan satu panggilan model di sisi Orvix. Setiap organisasi boleh punya maksimal **8** penolakan seperti itu per produk dalam satu jam bergulir. Setelah itu, call mengembalikan `429` dan `too_many_rejected_images` dengan header `Retry-After` dalam detik, sampai penolakan lama keluar dari jendela satu jam. Call yang kena batas ditolak sebelum saldo disentuh. Hitungannya terpisah dari KTP OCR.
 
+## Ekstraksi yang sedang berjalan
+
+Setiap organisasi boleh punya maksimal **10** ekstraksi yang sedang berjalan per produk pada saat yang sama. Call berikutnya mengembalikan `429` dan `too_many_concurrent_requests` dengan `Retry-After: 5`, sebelum saldo disentuh. Tunggu call sebelumnya selesai, atau antrekan upload di sisi Anda.
+
 ## Error
 
 | Status | Code | Ditagih |
@@ -94,7 +98,7 @@ Gambar yang bukan kartu NPWP (`not_npwp`) atau tidak terbaca (`unreadable_image`
 | `413` | `file_too_large` | Tidak |
 | `415` | `multipart_required`, `unsupported_file_type` | Tidak |
 | `422` | `not_npwp`, `unreadable_image` | Di-refund |
-| `429` | `too_many_rejected_images` | Tidak |
+| `429` | `too_many_rejected_images`, `too_many_concurrent_requests`, `rate_limit_exceeded` | Tidak |
 | `502`, `504` | `upstream_error`, `upstream_unavailable`, `upstream_timeout` | Di-refund |
 | `503` | `not_configured`, `metering_error` | Tidak |
 
