@@ -1,0 +1,104 @@
+---
+title: Setup Coding Plan
+description: Hubungkan OpenCode, Pi, Oh My Pi, atau klien OpenAI-compatible apa pun ke Coding Plan Orvix Anda.
+---
+
+# Setup Coding Plan
+
+Coding Plan (dan AI Plan) dipakai lewat endpoint-nya sendiri, **bukan** lewat API umum `/v1`:
+
+| | Coding Plan | API umum |
+| --- | --- | --- |
+| Base URL | `https://api.orvix.id/coding/v1` | `https://api.orvix.id/v1` |
+| Scope key | `coding:invoke` (**Orvix Coding**) | `ai:invoke` (**AI Router**) |
+| Dibayar dengan | Token Coding Plan, AI Plan, campaign | Orvix Credits, Token Plans |
+| Model | [`GET /coding/v1/models`](/id/models#model-coding-plan) | [`GET /v1/models`](/id/models) |
+
+Request ke `/v1` tidak pernah memakai Coding Plan. Jika wallet Anda kosong, request akan gagal dengan
+`402 insufficient Orvix Credits` meskipun token plan masih tersisa. Error ini hampir selalu berarti
+klien diarahkan ke `/v1`, atau model dipilih dari provider yang salah.
+
+## 1. Buat key Coding
+
+Buka [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys), buat key, lalu centang
+**Orvix Coding** (`coding:invoke`). Scope default **AI Router** saja tidak cukup: endpoint Coding
+akan menjawab `401 coding:invoke scope required`. Satu key boleh punya kedua scope.
+
+## 2. Install plugin untuk harness Anda
+
+Plugin mengarahkan harness ke endpoint Coding, membaca daftar model plan Anda, dan mengirim session ID
+yang menjaga request lanjutan tetap kena prompt cache. Pakai plugin daripada menulis config provider
+secara manual.
+
+| Harness | Install | Model yang dipilih |
+| --- | --- | --- |
+| [OpenCode](https://opencode.ai) 2.x | `opencode plugin add @orvix-id/opencode` | `orvix-coding/...` |
+| OpenCode 1.x | `"plugin": ["@orvix-id/opencode"]` di `opencode.json` | `orvix-coding/...` |
+| [Pi](https://pi.dev) | `pi install npm:@orvix-id/pi` | `orvix-coding/...` |
+| Oh My Pi | `omp plugin install @orvix-id/omp` | `orvix-coding/...` |
+
+Lalu sediakan key untuk harness dan restart harness-nya:
+
+```bash
+export ORVIX_CODING_API_KEY="orv-sk_live_..."
+```
+
+Taruh baris ini di shell profile (`~/.zshrc`, `~/.bashrc`) atau secret manager supaya terminal baru
+ikut punya key-nya. Detailnya ada di README masing-masing plugin: [OpenCode](https://github.com/Orvix-id/opencode-plugin),
+[Pi](https://github.com/Orvix-id/pi-plugin), [Oh My Pi](https://github.com/Orvix-id/omp-plugin).
+
+### OpenCode: pilih provider Orvix Coding
+
+Plugin OpenCode mendaftarkan dua provider, karena key yang sama juga bisa memakai API umum:
+
+- **Orvix Coding** (`orvix-coding/*`, nama berakhiran `(Orvix Coding)`): dibayar dengan Coding Plan Anda.
+- **Orvix** (`orvix/*`, nama berakhiran `(Orvix)`): dibayar dengan Orvix Credits.
+
+Kalau punya Coding Plan, pilih model dari **Orvix Coding**:
+
+```bash
+opencode -m orvix-coding/deepseek-v4.1-flash
+```
+
+Jika sebelumnya Anda menyalin blok `provider.orvix` atau `providers.orvix` ke `opencode.json` dari
+panduan lama, hapus blok tersebut. Plugin sudah mendaftarkan provider-nya sendiri, dan blok yang
+ditulis manual akan menimpanya.
+
+## 3. Pastikan sudah jalan
+
+Kirim pesan singkat. Pemakaian muncul di halaman Coding Plan di
+[platform.orvix.id](https://platform.orvix.id) setelah settle (biasanya dalam beberapa menit),
+dan dihitung terhadap jendela 5 jam, mingguan, dan bulanan.
+
+Untuk mengecek key dan endpoint tanpa harness:
+
+```bash
+curl https://api.orvix.id/coding/v1/models \
+  -H "Authorization: Bearer $ORVIX_CODING_API_KEY"
+```
+
+## Klien OpenAI-compatible lain
+
+Klien apa pun yang menerima base URL dan menambahkan `/chat/completions` bisa dipakai:
+
+| Setting | Nilai |
+| --- | --- |
+| Base URL | `https://api.orvix.id/coding/v1` |
+| API key | key `coding:invoke` Anda |
+| Model | ID dari `GET /coding/v1/models`, misalnya `orvix/deepseek-v4.1-flash` |
+
+Untuk prompt caching, kirim `session_id` yang stabil per percakapan sebagai field top-level di body
+request. Tanpa itu request tetap ditagih ke plan, tetapi setiap turn membayar prompt penuh lagi.
+
+## Troubleshooting
+
+| Gejala | Penyebab dan solusi |
+| --- | --- |
+| `402 insufficient Orvix Credits` padahal plan masih punya token | Request masuk ke `/v1`. Di OpenCode, pilih model di bawah **Orvix Coding**; di klien lain pakai base URL `https://api.orvix.id/coding/v1`. |
+| `Unsupported package for orvix/...` (OpenCode) | Ada blok provider yang ditulis manual untuk versi OpenCode yang lain. Hapus blok itu dan install plugin. |
+| `401 coding:invoke scope required` | Key tidak punya scope **Orvix Coding**. Buat key baru dengan scope tersebut. |
+| `403 coding_not_entitled` | Tidak ada Coding Plan atau AI Plan aktif untuk akun ini. Cek masa berlaku plan di platform. |
+| `400 ... not on the Coding Plan allowlist` | Model tidak termasuk dalam plan Anda. Pilih dari `GET /coding/v1/models`. |
+| `429 coding_concurrency_exceeded` | Terlalu banyak request berjalan bersamaan. Coba lagi setelah `retry_after` detik; plugin sudah melakukannya otomatis. |
+| `429 coding_quota_exceeded` | Jendela 5 jam, mingguan, atau bulanan sudah habis. `resets_at` menunjukkan kapan kuota kembali. |
+| Tidak ada model Orvix Coding di picker | Key tidak ada di environment harness (jalankan harness dari terminal tempat Anda meng-export key), atau plugin belum terinstall. |

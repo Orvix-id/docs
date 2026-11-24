@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "quickstart",
+    "coding-plan",
     "opencode",
     "opencode-v2",
     "authentication",

@@ -51,7 +51,7 @@ curl https://api.orvix.id/v1/models \
 `GET /coding/models`  
 OpenAI-compatible alias: `GET /coding/v1/models`
 
-Requires the `coding:invoke` scope. Returns the same allowlist that `POST /coding/completions` and `POST /coding/v1/chat/completions` admit (`coding_enabled` managed models), not the `/v1` catalogue. Cache-harness clients (Kamui) and OpenAI-compatible Coding clients (OpenCode with `baseURL` `https://api.orvix.id/coding/v1`) should pick a model from this list.
+Requires the `coding:invoke` scope. Returns the same allowlist that `POST /coding/completions` and `POST /coding/v1/chat/completions` admit (`coding_enabled` managed models), not the `/v1` catalogue. Coding clients (the Orvix plugins for OpenCode, Pi and Oh My Pi, or any OpenAI-compatible client with base URL `https://api.orvix.id/coding/v1`) should pick a model from this list. See [Coding Plan Setup](/coding-plan).
 
 ```bash
 curl https://api.orvix.id/coding/models \
@@ -63,7 +63,7 @@ curl https://api.orvix.id/coding/models \
   "object": "list",
   "data": [
     {
-      "id": "orvix/grok-4.6",
+      "id": "orvix/deepseek-v4.1-flash",
       "object": "model",
       "created": 1720000000,
       "owned_by": "orvix",

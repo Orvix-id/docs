@@ -1,62 +1,115 @@
 ---
 title: Setup OpenCode
-description: Pasang Orvix di OpenCode sekali paste — satu file config, satu API key, tanpa setup model lokal.
+description: Tambahkan Orvix ke OpenCode 1.x atau 2.x dengan plugin resmi.
 ---
 
 # Setup OpenCode
 
-> **Catatan endpoint:** API Orvix umum adalah `https://api.orvix.id/v1`. Rute native Orvix Coding
-> Plan tetap `POST /coding/completions` (`session_id` wajib; gunakan [Kamui](https://github.com/ManifoldSystems/kamui)).
-> Klien OpenAI-compatible Coding Plan yang menambahkan `/chat/completions` harus memakai
-> `https://api.orvix.id/coding/v1`, bukan `/v1`.
+Plugin resmi [`@orvix-id/opencode`](https://github.com/Orvix-id/opencode-plugin) jalan di
+OpenCode **1.18.29+** dan **2.0.21+**. Plugin ini mendaftarkan dua provider dan menjaga daftar
+modelnya tetap sinkron dengan akun Anda:
 
-Copy prompt di bawah ke AI apapun (bahkan model free di Zen seperti Big Pickle / DeepSeek V4 Flash) — AI akan setup Orvix otomatis.
+| Provider | Dibayar dengan | Endpoint | Scope key |
+| --- | --- | --- | --- |
+| **Orvix Coding** (`orvix-coding/*`) | Coding Plan, AI Plan, campaign | `https://api.orvix.id/coding/v1` | `coding:invoke` |
+| **Orvix** (`orvix/*`) | Orvix Credits, Token Plans | `https://api.orvix.id/v1` | `ai:invoke` |
 
-```txt
-Tugas: Setup Orvix di OpenCode.
+<Callout type="warn">
+  **Punya Coding Plan?** Pilih model dari **Orvix Coding** (nama berakhiran `(Orvix Coding)`). Model
+  yang sama di bawah **Orvix** ditagih ke Orvix Credits dan gagal dengan `insufficient Orvix Credits`
+  saat wallet kosong. Lihat [Setup Coding Plan](/id/coding-plan).
+</Callout>
 
-Langkah:
-1. Minta API key Orvix ke user jika belum ada. Key ada di platform.orvix.id/api-keys, format orv-sk_live_... Jika user belum punya, arahkan ke sana.
-2. Buat file ~/.config/opencode/opencode.json (macOS/Linux) atau %APPDATA%\opencode\opencode.json (Windows). Buat folder jika belum ada: mkdir -p ~/.config/opencode.
-3. Isi dengan config ini, ganti orv-sk_live_... dengan key user:
+## 1. Buat key
+
+Buka [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys) dan buat key dengan scope
+untuk provider yang Anda pakai: **Orvix Coding** (`coding:invoke`), **AI Router** (`ai:invoke`), atau keduanya.
+
+## 2. Install plugin
+
+Cek versi Anda dengan `opencode --version`.
+
+**OpenCode 2.x:**
+
+```bash
+opencode plugin add @orvix-id/opencode
+```
+
+**OpenCode 1.x:** tambahkan plugin ke `~/.config/opencode/opencode.json` (merge dengan setting
+yang sudah ada). OpenCode akan menginstallnya saat start berikutnya.
+
+```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "orvix": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Orvix",
-      "options": {
-        "baseURL": "https://api.orvix.id/v1",
-        "apiKey": "orv-sk_live_..."
-      },
-      "models": {
-        "orvix/muse-spark-1.2": {
-          "name": "Muse Spark 1.2",
-          "id": "orvix/muse-spark-1.2",
-          "limit": {
-            "context": 1000000,
-            "output": 32000
-          },
-          "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"]
-          }
-        }
-      }
-    }
-  }
+  "plugin": ["@orvix-id/opencode"]
 }
-4. Jika file sudah ada, merge provider.orvix tanpa hapus provider lain. Validasi JSON: python3 -m json.tool ~/.config/opencode/opencode.json.
-5. Suruh user restart OpenCode (config hanya dibaca saat startup), lalu /models → pilih Orvix → Muse Spark 1.2.
-
-Catatan:
-- Paket harus @ai-sdk/openai-compatible (bukan @ai-sdk/openai). OpenCode menambahkan `/chat/completions` ke baseURL.
-- API Orvix umum: `"baseURL": "https://api.orvix.id/v1"` dengan key `ai:invoke`.
-- Coding Plan: `"baseURL": "https://api.orvix.id/coding/v1"` dengan key `coding:invoke` dan Coding Plan aktif. Itu memanggil `POST /coding/v1/chat/completions` dan `GET /coding/v1/models`. `POST /coding/completions` native tetap untuk Kamui dan masih mewajibkan `session_id`.
-- OpenCode tidak mengirim `session_id`. Request compatibility tetap ditagih sebagai Coding Plan, tetapi cache affinity dimatikan kecuali klien menyertakan `session_id`. Untuk rute sticky native, install Kamui dari [kamui-web.vercel.app](https://kamui-web.vercel.app) lalu pilih **Orvix Coding**.
-- Model id wajib prefix orvix/ (contoh: orvix/muse-spark-1.2). Tanpa prefix akan error no BYOK route.
-- modalities input ["text","image"] mengaktifkan pemahaman gambar — tanpa itu clipboard image akan ditolak.
-- Untuk keamanan, tawarkan pindah key ke env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." di ~/.zshrc.
-- Jika error 402 = credits habis, arahkan ke platform.orvix.id/billing.
-- Jika error accepts at most 128 tools = model OpenAI, sarankan orvix/muse-spark-1.2 atau orvix/auto yang tidak ada batas tool.
 ```
+
+v1 memakai `plugin` (tunggal), v2 memakai `plugins` (jamak). Anda tidak perlu blok `provider`:
+plugin sudah mendaftarkan kedua provider. Jika Anda menyalin blok `provider.orvix` atau
+`providers.orvix` dari versi lama halaman ini, hapus blok tersebut.
+
+## 3. Set key
+
+```bash
+# Coding Plan
+export ORVIX_CODING_API_KEY="orv-sk_live_..."
+
+# General API (Orvix Credits)
+export ORVIX_API_KEY="orv-sk_live_..."
+```
+
+Orvix Coding memakai `ORVIX_API_KEY` sebagai fallback jika `ORVIX_CODING_API_KEY` tidak di-set,
+jadi key dengan kedua scope cukup memakai `ORVIX_API_KEY`. Taruh baris-baris ini di shell profile
+(`~/.zshrc`, `~/.bashrc`) atau secret manager. Di OpenCode 2.x Anda juga bisa menjalankan
+`/connect orvix-coding` atau `/connect orvix`; key yang tersimpan lebih diutamakan daripada environment.
+
+## 4. Restart dan pilih model
+
+Tutup OpenCode lalu jalankan lagi dari terminal yang sudah punya key:
+
+```bash
+opencode -m orvix-coding/deepseek-v4.1-flash   # Coding Plan
+opencode -m orvix/deepseek-v4.1-flash          # Orvix Credits
+```
+
+Atau buka `/models` dan pilih model. Model yang punya level reasoning menyediakannya sebagai variant,
+misalnya `orvix-coding/glm-5.2#high`.
+
+## Biarkan AI yang setup
+
+Paste ini ke assistant apa pun yang bisa mengedit file di mesin Anda:
+
+```txt
+Setup Orvix di OpenCode dengan plugin resmi @orvix-id/opencode.
+1. Jalankan `opencode --version`.
+2. Untuk 2.x jalankan `opencode plugin add @orvix-id/opencode`. Untuk 1.x tambahkan "@orvix-id/opencode"
+   ke array "plugin" di ~/.config/opencode/opencode.json, merge dengan setting yang sudah ada.
+3. Hapus blok "provider.orvix" atau "providers.orvix" dari file itu; plugin mendaftarkan
+   provider-nya sendiri. Validasi JSON-nya setelah itu.
+4. Minta key Orvix saya (platform.orvix.id/api-keys) lalu tambahkan
+   export ORVIX_CODING_API_KEY="..." ke shell profile saya. Jangan tampilkan key-nya kembali.
+5. Suruh saya restart OpenCode dan pilih model berakhiran "(Orvix Coding)" dari /models.
+```
+
+## Migrasi
+
+- **Dari `opencode-provider-orvix`:** plugin komunitas ini sekarang sudah jadi bagian dari plugin resmi.
+  Ganti di daftar plugin Anda dengan `@orvix-id/opencode`; pilihan model `orvix/*` dan `ORVIX_API_KEY`
+  tetap berfungsi. Jangan load keduanya.
+- **Dari config provider yang ditulis manual:** hapus blok `provider.orvix` (1.x) atau `providers.orvix`
+  (2.x) lalu install plugin.
+
+## Troubleshooting
+
+| Gejala | Solusi |
+| --- | --- |
+| `insufficient Orvix Credits` padahal punya Coding Plan | Pilih model di bawah **Orvix Coding**, bukan **Orvix**. |
+| `Unsupported package for orvix/...` | Ada blok provider yang ditulis manual untuk versi OpenCode yang lain. Hapus dan pakai plugin. |
+| `Model unavailable: orvix-coding/...` | Cek `plugin`/`plugins`, restart, lalu baca `opencode --print-logs`. |
+| Tidak ada model Orvix di `/models` | Key tidak ada di environment OpenCode, atau tidak punya scope provider tersebut. |
+| `401 coding:invoke scope required` | Buat key dengan scope **Orvix Coding**. |
+| `402` di **Orvix** | Tambah credits di [platform.orvix.id/billing](https://platform.orvix.id/billing). |
+| `429 coding_quota_exceeded` | Jendela 5 jam, mingguan, atau bulanan sudah habis; `resets_at` menunjukkan kapan kembali. |
+
+Error Coding Plan lainnya: [Setup Coding Plan](/id/coding-plan#troubleshooting).
