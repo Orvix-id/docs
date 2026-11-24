@@ -1,0 +1,104 @@
+---
+title: Coding Plan Setup
+description: Connect OpenCode, Pi, Oh My Pi or any OpenAI-compatible client to your Orvix Coding Plan.
+---
+
+# Coding Plan Setup
+
+The Coding Plan (and the AI Plan) is used through its own endpoint, **not** the general `/v1` API:
+
+| | Coding Plan | General API |
+| --- | --- | --- |
+| Base URL | `https://api.orvix.id/coding/v1` | `https://api.orvix.id/v1` |
+| Key scope | `coding:invoke` (**Orvix Coding**) | `ai:invoke` (**AI Router**) |
+| Paid by | Coding Plan tokens, AI Plan, campaigns | Orvix Credits, Token Plans |
+| Models | [`GET /coding/v1/models`](/models#coding-plan-models) | [`GET /v1/models`](/models) |
+
+A request to `/v1` never spends the Coding Plan. If your wallet is empty it fails with
+`402 insufficient Orvix Credits` even while the plan has tokens left. That error almost always means
+the client is pointed at `/v1`, or the model was picked from the wrong provider.
+
+## 1. Create a Coding key
+
+Open [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys), create a key and tick
+**Orvix Coding** (`coding:invoke`). The default **AI Router** scope alone is not enough: Coding
+endpoints answer `401 coding:invoke scope required`. One key may carry both scopes.
+
+## 2. Install the plugin for your harness
+
+The plugins point the harness at the Coding endpoint, read your plan's model list, and send the
+session ID that keeps follow-up requests on the prompt cache. Use them rather than writing provider
+config by hand.
+
+| Harness | Install | Model to pick |
+| --- | --- | --- |
+| [OpenCode](https://opencode.ai) 2.x | `opencode plugin add @orvix-id/opencode` | `orvix-coding/...` |
+| OpenCode 1.x | `"plugin": ["@orvix-id/opencode"]` in `opencode.json` | `orvix-coding/...` |
+| [Pi](https://pi.dev) | `pi install npm:@orvix-id/pi` | `orvix-coding/...` |
+| Oh My Pi | `omp plugin install @orvix-id/omp` | `orvix-coding/...` |
+
+Then expose the key to the harness and restart it:
+
+```bash
+export ORVIX_CODING_API_KEY="orv-sk_live_..."
+```
+
+Put the line in your shell profile (`~/.zshrc`, `~/.bashrc`) or secret manager so new terminals have
+it. Each plugin's README has the details: [OpenCode](https://github.com/Orvix-id/opencode-plugin),
+[Pi](https://github.com/Orvix-id/pi-plugin), [Oh My Pi](https://github.com/Orvix-id/omp-plugin).
+
+### OpenCode: pick the Orvix Coding provider
+
+The OpenCode plugin registers two providers, because the same key can also use the general API:
+
+- **Orvix Coding** (`orvix-coding/*`, names end in `(Orvix Coding)`): pays with your Coding Plan.
+- **Orvix** (`orvix/*`, names end in `(Orvix)`): pays with Orvix Credits.
+
+With a Coding Plan, choose models from **Orvix Coding**:
+
+```bash
+opencode -m orvix-coding/deepseek-v4.1-flash
+```
+
+If you previously copied a `provider.orvix` or `providers.orvix` block into `opencode.json` from an
+older guide, delete it. The plugin registers the providers itself, and a hand-written block
+overrides it.
+
+## 3. Check it works
+
+Send a short message. Usage shows on the Coding Plan page in
+[platform.orvix.id](https://platform.orvix.id) after it settles (usually within a few minutes),
+counted against the 5-hour, weekly and monthly windows.
+
+To check the key and endpoint without a harness:
+
+```bash
+curl https://api.orvix.id/coding/v1/models \
+  -H "Authorization: Bearer $ORVIX_CODING_API_KEY"
+```
+
+## Other OpenAI-compatible clients
+
+Any client that takes a base URL and appends `/chat/completions` works:
+
+| Setting | Value |
+| --- | --- |
+| Base URL | `https://api.orvix.id/coding/v1` |
+| API key | your `coding:invoke` key |
+| Model | an ID from `GET /coding/v1/models`, e.g. `orvix/deepseek-v4.1-flash` |
+
+For prompt caching, send a stable `session_id` per conversation as a top-level field in the request
+body. Without it requests still bill to the plan, but every turn pays for the full prompt again.
+
+## Troubleshooting
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `402 insufficient Orvix Credits` while the plan has tokens | The request went to `/v1`. In OpenCode, pick the model under **Orvix Coding**; elsewhere use base URL `https://api.orvix.id/coding/v1`. |
+| `Unsupported package for orvix/...` (OpenCode) | A hand-written provider block from the other OpenCode version. Delete it and install the plugin. |
+| `401 coding:invoke scope required` | The key lacks the **Orvix Coding** scope. Create a new key with it. |
+| `403 coding_not_entitled` | No active Coding Plan or AI Plan covers the account. Check the plan's expiry on the platform. |
+| `400 ... not on the Coding Plan allowlist` | The model is not in your plan. Pick one from `GET /coding/v1/models`. |
+| `429 coding_concurrency_exceeded` | Too many requests in flight at once. Retry after `retry_after` seconds; the plugins do this for you. |
+| `429 coding_quota_exceeded` | A 5-hour, weekly or monthly window is used up. `resets_at` says when it frees. |
+| No Orvix Coding models in the picker | The key is not in the harness's environment (start it from the terminal where you exported it), or the plugin is not installed. |

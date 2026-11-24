@@ -1,62 +1,115 @@
 ---
 title: OpenCode Setup
-description: Add Orvix to OpenCode in one paste — one config file, one API key, no local model setup.
+description: Add Orvix to OpenCode 1.x or 2.x with the official plugin.
 ---
 
 # OpenCode Setup
 
-> **Endpoint note:** the general Orvix API is `https://api.orvix.id/v1`. Orvix Coding Plan's native
-> route remains `POST /coding/completions` (required `session_id`; use [Kamui](https://github.com/ManifoldSystems/kamui)).
-> OpenAI-compatible Coding Plan clients that append `/chat/completions` should use
-> `https://api.orvix.id/coding/v1` instead of `/v1`.
+The official plugin [`@orvix-id/opencode`](https://github.com/Orvix-id/opencode-plugin) works on
+OpenCode **1.18.29+** and **2.0.21+**. It registers two providers and keeps their model lists in
+sync with your account:
 
-Copy the prompt below to any AI (even free Zen models like Big Pickle / DeepSeek V4 Flash) — the AI will set up Orvix automatically.
+| Provider | Pays with | Endpoint | Key scope |
+| --- | --- | --- | --- |
+| **Orvix Coding** (`orvix-coding/*`) | Coding Plan, AI Plan, campaigns | `https://api.orvix.id/coding/v1` | `coding:invoke` |
+| **Orvix** (`orvix/*`) | Orvix Credits, Token Plans | `https://api.orvix.id/v1` | `ai:invoke` |
 
-```txt
-Task: Set up Orvix in OpenCode.
+<Callout type="warn">
+  **Have a Coding Plan?** Pick models from **Orvix Coding** (names end in `(Orvix Coding)`). The same
+  model under **Orvix** bills Orvix Credits and fails with `insufficient Orvix Credits` when the
+  wallet is empty. See [Coding Plan Setup](/coding-plan).
+</Callout>
 
-Steps:
-1. Ask the user for their Orvix API key if not already provided. Keys are at platform.orvix.id/api-keys, format orv-sk_live_... If they don't have one, direct them there.
-2. Create file ~/.config/opencode/opencode.json (macOS/Linux) or %APPDATA%\opencode\opencode.json (Windows). Create the folder if needed: mkdir -p ~/.config/opencode.
-3. Fill it with this config, replacing orv-sk_live_... with the user's key:
+## 1. Create a key
+
+Open [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys) and create a key with the scope
+for the provider you use: **Orvix Coding** (`coding:invoke`), **AI Router** (`ai:invoke`), or both.
+
+## 2. Install the plugin
+
+Check your version with `opencode --version`.
+
+**OpenCode 2.x:**
+
+```bash
+opencode plugin add @orvix-id/opencode
+```
+
+**OpenCode 1.x:** add the plugin to `~/.config/opencode/opencode.json` (merge with existing
+settings). OpenCode installs it on the next start.
+
+```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "orvix": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Orvix",
-      "options": {
-        "baseURL": "https://api.orvix.id/v1",
-        "apiKey": "orv-sk_live_..."
-      },
-      "models": {
-        "orvix/muse-spark-1.2": {
-          "name": "Muse Spark 1.2",
-          "id": "orvix/muse-spark-1.2",
-          "limit": {
-            "context": 1000000,
-            "output": 32000
-          },
-          "modalities": {
-            "input": ["text", "image"],
-            "output": ["text"]
-          }
-        }
-      }
-    }
-  }
+  "plugin": ["@orvix-id/opencode"]
 }
-4. If the file already exists, merge provider.orvix without removing other providers. Validate JSON: python3 -m json.tool ~/.config/opencode/opencode.json.
-5. Tell the user to restart OpenCode (config is only read at startup), then /models → select Orvix → Muse Spark 1.2.
-
-Notes:
-- Package must be @ai-sdk/openai-compatible (not @ai-sdk/openai). OpenCode appends `/chat/completions` to the baseURL.
-- General Orvix API: `"baseURL": "https://api.orvix.id/v1"` with an `ai:invoke` key.
-- Coding Plan: `"baseURL": "https://api.orvix.id/coding/v1"` with a `coding:invoke` key and an active Coding Plan. That calls `POST /coding/v1/chat/completions` and `GET /coding/v1/models`. Native `POST /coding/completions` stays for Kamui and still requires `session_id`.
-- OpenCode does not send `session_id`. Compatibility requests still bill as Coding Plan, but cache affinity is disabled unless the client includes `session_id`. For the native sticky route, install Kamui from [kamui-web.vercel.app](https://kamui-web.vercel.app) and choose **Orvix Coding**.
-- Model id must have orvix/ prefix (e.g., orvix/muse-spark-1.2). Without it you'll get no BYOK route error.
-- modalities input ["text","image"] enables image understanding — without it clipboard images are rejected.
-- For security, offer to move the key to env: "apiKey": "{env:ORVIX_API_KEY}" + export ORVIX_API_KEY="..." in ~/.zshrc.
-- If error 402 = out of credits, direct to platform.orvix.id/billing.
-- If error accepts at most 128 tools = OpenAI model limit, suggest orvix/muse-spark-1.2 or orvix/auto which have no tool limit.
 ```
+
+v1 uses `plugin` (singular), v2 uses `plugins` (plural). You do not need a `provider` block: the
+plugin registers both providers. If you copied a `provider.orvix` or `providers.orvix` block from an
+older version of this page, delete it.
+
+## 3. Set the key
+
+```bash
+# Coding Plan
+export ORVIX_CODING_API_KEY="orv-sk_live_..."
+
+# General API (Orvix Credits)
+export ORVIX_API_KEY="orv-sk_live_..."
+```
+
+Orvix Coding falls back to `ORVIX_API_KEY` when `ORVIX_CODING_API_KEY` is unset, so a key with both
+scopes needs only `ORVIX_API_KEY`. Put the lines in your shell profile (`~/.zshrc`, `~/.bashrc`) or
+secret manager. On OpenCode 2.x you can instead run `/connect orvix-coding` or `/connect orvix`; a
+stored key takes precedence over the environment.
+
+## 4. Restart and choose a model
+
+Quit OpenCode and start it again from a terminal that has the key:
+
+```bash
+opencode -m orvix-coding/deepseek-v4.1-flash   # Coding Plan
+opencode -m orvix/deepseek-v4.1-flash          # Orvix Credits
+```
+
+Or open `/models` and pick a model. Models with reasoning levels offer them as variants, for example
+`orvix-coding/glm-5.2#high`.
+
+## Let an AI set it up
+
+Paste this into any assistant that can edit files on your machine:
+
+```txt
+Set up Orvix in OpenCode with the official plugin @orvix-id/opencode.
+1. Run `opencode --version`.
+2. For 2.x run `opencode plugin add @orvix-id/opencode`. For 1.x add "@orvix-id/opencode" to the
+   "plugin" array in ~/.config/opencode/opencode.json, merging with existing settings.
+3. Remove any "provider.orvix" or "providers.orvix" block from that file; the plugin registers
+   the providers itself. Validate the JSON afterwards.
+4. Ask me for my Orvix key (platform.orvix.id/api-keys) and add
+   export ORVIX_CODING_API_KEY="..." to my shell profile. Do not print the key back.
+5. Tell me to restart OpenCode and pick a model ending in "(Orvix Coding)" from /models.
+```
+
+## Migrating
+
+- **From `opencode-provider-orvix`:** the community plugin is now part of the official one. Replace
+  it in your plugin list with `@orvix-id/opencode`; `orvix/*` model selections and `ORVIX_API_KEY`
+  keep working. Do not load both.
+- **From a hand-written provider config:** delete the `provider.orvix` (1.x) or `providers.orvix`
+  (2.x) block and install the plugin.
+
+## Troubleshooting
+
+| Symptom | Fix |
+| --- | --- |
+| `insufficient Orvix Credits` with a Coding Plan | Pick the model under **Orvix Coding**, not **Orvix**. |
+| `Unsupported package for orvix/...` | A hand-written provider block for the other OpenCode version. Delete it and use the plugin. |
+| `Model unavailable: orvix-coding/...` | Check `plugin`/`plugins`, restart, and read `opencode --print-logs`. |
+| No Orvix models in `/models` | The key is not in OpenCode's environment, or lacks the provider's scope. |
+| `401 coding:invoke scope required` | Create a key with the **Orvix Coding** scope. |
+| `402` on **Orvix** | Add credits at [platform.orvix.id/billing](https://platform.orvix.id/billing). |
+| `429 coding_quota_exceeded` | A 5-hour, weekly or monthly window is used up; `resets_at` says when. |
+
+More Coding Plan errors: [Coding Plan Setup](/coding-plan#troubleshooting).

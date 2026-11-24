@@ -1,55 +1,52 @@
 ---
-title: Setup OpenCode V2
-description: Pasang Orvix di OpenCode V2 menggunakan konfigurasi provider native.
+title: Config Manual OpenCode V2
+description: Konfigurasi Orvix di OpenCode 2.x secara manual, untuk setup yang tidak bisa memuat plugin.
 ---
 
-# Setup OpenCode V2
+# Config Manual OpenCode V2
 
-Panduan ini khusus untuk **OpenCode V2**. Jika masih memakai OpenCode versi sebelumnya, ikuti panduan [Setup OpenCode](/id/opencode).
+<Callout type="warn">
+  **Pakai plugin kalau bisa.** `opencode plugin add @orvix-id/opencode` mendaftarkan kedua provider
+  Orvix, menjaga daftar model tetap terbaru, dan mengaktifkan prompt caching untuk Coding Plan. Lihat
+  [Setup OpenCode](/id/opencode). Halaman ini untuk setup yang tidak bisa memuat plugin.
+</Callout>
 
-## Persiapan
+Config ini khusus untuk **OpenCode 2.x**. OpenCode 1.x memakai nama field yang berbeda; blok 2.x di
+instalasi 1.x (atau sebaliknya) tidak akan ter-load, biasanya dengan error `Unsupported package`.
 
-Buat API key Orvix di [platform.orvix.id/api-keys](https://platform.orvix.id/api-keys). Akses API umum membutuhkan key dengan izin `ai:invoke`.
+## Pilih endpoint dulu
 
-Endpoint API umum:
+| Anda bayar dengan | Base URL | Scope key | ID provider di bawah |
+| --- | --- | --- | --- |
+| Coding Plan atau AI Plan | `https://api.orvix.id/coding/v1` | `coding:invoke` | `orvix-coding` |
+| Orvix Credits | `https://api.orvix.id/v1` | `ai:invoke` | `orvix` |
 
-```text
-https://api.orvix.id/v1
-```
+Mengarahkan key Coding Plan ke `/v1` akan menagih Orvix Credits, bukan plan, dan gagal dengan
+`insufficient Orvix Credits` saat wallet kosong.
 
 ## Konfigurasi provider
 
-Buat atau edit config global:
+Edit `~/.config/opencode/opencode.json` (macOS/Linux) atau `%APPDATA%\opencode\opencode.json`
+(Windows). Merge ke file yang sudah ada tanpa menghapus setting lain. Perhatikan bahwa key top-level-nya
+adalah `providers` (jamak).
 
-- macOS/Linux: `~/.config/opencode/opencode.json`
-- Windows: `%APPDATA%\opencode\opencode.json`
-
-Merge `providers.orvix` ke file yang sudah ada tanpa menghapus setting lain:
+**Coding Plan:**
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
   "providers": {
-    "orvix": {
-      "name": "Orvix",
+    "orvix-coding": {
+      "name": "Orvix Coding",
       "package": "@opencode/ai/providers/openai-compatible",
       "settings": {
-        "baseURL": "https://api.orvix.id/v1",
-        "apiKey": "{env:ORVIX_API_KEY}"
+        "baseURL": "https://api.orvix.id/coding/v1",
+        "apiKey": "{env:ORVIX_CODING_API_KEY}"
       },
       "models": {
-        "orvix/gpt-5.6-sol": {
-          "modelID": "orvix/gpt-5.6-sol",
-          "name": "GPT 5.6 Sol",
-          "capabilities": {
-            "tools": true,
-            "input": ["text", "image"],
-            "output": ["text"]
-          }
-        },
-        "orvix/auto": {
-          "modelID": "orvix/auto",
-          "name": "Orvix Auto",
+        "deepseek-v4.1-flash": {
+          "modelID": "orvix/deepseek-v4.1-flash",
+          "name": "DeepSeek V4.1 Flash (Orvix Coding)",
           "capabilities": {
             "tools": true,
             "input": ["text", "image"],
@@ -62,22 +59,19 @@ Merge `providers.orvix` ke file yang sudah ada tanpa menghapus setting lain:
 }
 ```
 
-OpenCode V2 memakai `providers`, `package`, `settings`, `modelID`, dan `capabilities`. Jangan ganti dengan field legacy `provider`, `npm`, `options`, `id`, atau `modalities`.
+**Orvix Credits:** blok yang sama dengan ID provider `orvix`, base URL `https://api.orvix.id/v1`,
+`"apiKey": "{env:ORVIX_API_KEY}"`, dan model dari `GET /v1/models`.
 
-## Simpan API key
+OpenCode 2.x memakai `providers`, `package`, `settings`, `modelID`, dan `capabilities`. Jangan campur
+dengan field 1.x `provider`, `npm`, `options`, `id`, atau `modalities`.
 
-Simpan key di environment background service:
+## Simpan key
 
-```bash
-opencode service set env ORVIX_API_KEY "orv-sk_live_..."
-```
-
-Cara ini lebih andal daripada hanya mengekspor key dari shell profile karena service OpenCode yang sudah berjalan mungkin tidak mewarisi variabel shell baru.
-
-Periksa setting service tanpa membagikan nilainya:
+Simpan key di environment background service supaya service yang sudah berjalan ikut membacanya:
 
 ```bash
-opencode service get
+opencode service set env ORVIX_CODING_API_KEY "orv-sk_live_..."
+opencode service get   # confirm it is set, without printing it elsewhere
 ```
 
 ## Validasi dan reload
@@ -88,25 +82,34 @@ opencode reload
 opencode models
 ```
 
-Buka `/models` lalu pilih model Orvix. Selector seperti `orvix/orvix/gpt-5.6-sol` adalah normal: `orvix` pertama merupakan ID provider OpenCode, sedangkan `orvix/gpt-5.6-sol` adalah ID model upstream yang dikirim ke API.
+Buka `/models` lalu pilih model. Selector-nya terbaca `orvix-coding/deepseek-v4.1-flash`: bagian
+pertama adalah ID provider, sedangkan `modelID` adalah yang dikirim ke Orvix.
 
 ## Tambahkan model lain
 
-Ambil inventory terbaru dari `GET https://api.orvix.id/v1/models` dengan `Authorization: Bearer <key>`, lalu tambahkan model chat yang tersedia ke `providers.orvix.models`.
+Lihat daftar model yang bisa dipakai key Anda, lalu tambahkan masing-masing di bawah `models`:
 
-- Pertahankan prefix upstream `orvix/` secara lengkap pada map key dan `modelID`; menghapusnya dapat menyebabkan error no BYOK route.
-- Jangan salin metadata capability Orvix secara langsung. Petakan ke field OpenCode `capabilities.tools`, `capabilities.input`, `capabilities.output`, dan `limit`.
-- Konfigurasikan model khusus image dan video generation melalui API generation, bukan provider chat-completions ini.
+```bash
+curl https://api.orvix.id/coding/v1/models -H "Authorization: Bearer $ORVIX_CODING_API_KEY"
+```
 
-## Coding Plan
+Pertahankan prefix `orvix/` secara lengkap di `modelID`. Set `capabilities.input` ke `["text", "image"]`
+hanya untuk model yang menerima gambar. Model image dan video generation tidak termasuk di provider chat.
 
-Untuk klien OpenAI-compatible Coding Plan, gunakan `https://api.orvix.id/coding/v1` dengan key `coding:invoke` dan Coding Plan aktif. Endpoint ini memakai `POST /coding/v1/chat/completions` dan `GET /coding/v1/models`.
+## Batasan config manual
 
-OpenCode tidak mengirim `session_id`. Untuk rute sticky native di `POST /coding/completions`, install [Kamui](https://kamui-web.vercel.app) lalu pilih **Orvix Coding**.
+Tanpa plugin, OpenCode tidak mengirim `session_id`, jadi request Coding Plan tetap ditagih ke plan
+tetapi tidak kena prompt cache: setiap turn membayar prompt penuh. Daftar model juga tidak ikut
+ter-update saat lineup model plan berubah.
 
 ## Troubleshooting
 
-- **Missing Authorization header:** jalankan `opencode service get`, pastikan `env.ORVIX_API_KEY` tersedia, lalu restart service.
-- **402:** tambah credits di [platform.orvix.id/billing](https://platform.orvix.id/billing).
-- **No BYOK route:** gunakan ID model upstream lengkap yang diawali `orvix/`.
-- **Accepts at most 128 tools:** gunakan `orvix/gpt-5.6-sol` atau `orvix/auto`.
+| Gejala | Solusi |
+| --- | --- |
+| `Unsupported package` | Config-nya untuk versi OpenCode yang lain. Cek `opencode --version`, atau pakai plugin. |
+| `insufficient Orvix Credits` padahal punya Coding Plan | Base URL-nya `/v1`. Pakai `https://api.orvix.id/coding/v1`. |
+| Missing Authorization header | Jalankan `opencode service get`, pastikan variabel key sudah di-set, lalu restart service. |
+| `401 coding:invoke scope required` | Buat key dengan scope **Orvix Coding**. |
+| No BYOK route | Pakai ID model lengkap yang diawali `orvix/` di `modelID`. |
+
+Selengkapnya: [Setup Coding Plan](/id/coding-plan#troubleshooting).

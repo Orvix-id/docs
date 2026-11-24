@@ -51,7 +51,7 @@ curl https://api.orvix.id/v1/models \
 `GET /coding/models`  
 Alias OpenAI-compatible: `GET /coding/v1/models`
 
-Membutuhkan scope `coding:invoke`. Mengembalikan allowlist yang sama dengan yang diterima `POST /coding/completions` dan `POST /coding/v1/chat/completions` (model terkelola `coding_enabled`), bukan katalog `/v1`. Klien cache-harness (Kamui) dan klien Coding OpenAI-compatible (OpenCode dengan `baseURL` `https://api.orvix.id/coding/v1`) harus memilih model dari daftar ini.
+Membutuhkan scope `coding:invoke`. Mengembalikan allowlist yang sama dengan yang diterima `POST /coding/completions` dan `POST /coding/v1/chat/completions` (model terkelola `coding_enabled`), bukan katalog `/v1`. Klien Coding (plugin Orvix untuk OpenCode, Pi, dan Oh My Pi, atau klien OpenAI-compatible apa pun dengan base URL `https://api.orvix.id/coding/v1`) harus memilih model dari daftar ini. Lihat [Setup Coding Plan](/id/coding-plan).
 
 ```bash
 curl https://api.orvix.id/coding/models \
@@ -63,7 +63,7 @@ curl https://api.orvix.id/coding/models \
   "object": "list",
   "data": [
     {
-      "id": "orvix/grok-4.6",
+      "id": "orvix/deepseek-v4.1-flash",
       "object": "model",
       "created": 1720000000,
       "owned_by": "orvix",
